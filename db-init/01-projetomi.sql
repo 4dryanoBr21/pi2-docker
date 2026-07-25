@@ -1,11 +1,11 @@
 -- phpMyAdmin SQL Dump
--- version 5.2.1
+-- version 5.2.3
 -- https://www.phpmyadmin.net/
 --
--- Host: 127.0.0.1
--- Tempo de geração: 27/11/2025 às 12:23
--- Versão do servidor: 10.4.28-MariaDB
--- Versão do PHP: 8.2.4
+-- Host: db
+-- Tempo de geração: 25/07/2026 às 03:34
+-- Versão do servidor: 10.4.34-MariaDB-1:10.4.34+maria~ubu2004
+-- Versão do PHP: 8.3.32
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -35,13 +35,6 @@ CREATE TABLE `criador` (
   `fk_sala_criada` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Despejando dados para a tabela `criador`
---
-
-INSERT INTO `criador` (`id_criador`, `nome_criador`, `email`, `senha`, `fk_sala_criada`) VALUES
-(2, 'usuario de test', 'test@test', 'test', 17);
-
 -- --------------------------------------------------------
 
 --
@@ -54,15 +47,6 @@ CREATE TABLE `participante` (
   `fk_sala_atual` int(11) DEFAULT NULL,
   `data_hora_solicitacao` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Despejando dados para a tabela `participante`
---
-
-INSERT INTO `participante` (`id_participante`, `nome_participante`, `fk_sala_atual`, `data_hora_solicitacao`) VALUES
-(25, 'Adriano', NULL, NULL),
-(26, 'MC DRIDRI', NULL, NULL),
-(27, 'Ana', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -79,14 +63,6 @@ CREATE TABLE `sala` (
   `data_inicio` datetime DEFAULT NULL,
   `data_fim` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Despejando dados para a tabela `sala`
---
-
-INSERT INTO `sala` (`id_sala`, `nome_sala`, `codigo_sala`, `tempo_de_fala`, `encerrada`, `data_inicio`, `data_fim`) VALUES
-(16, 'sala de test', 'AvK0qi', '05:00:00', 1, '2025-11-27 08:18:16', '2025-11-27 08:18:43'),
-(17, 'CTIC', 'zuLkMA', '05:00:00', 1, '2025-11-27 08:19:51', '2025-11-27 08:21:27');
 
 --
 -- Índices para tabelas despejadas
@@ -120,19 +96,19 @@ ALTER TABLE `sala`
 -- AUTO_INCREMENT de tabela `criador`
 --
 ALTER TABLE `criador`
-  MODIFY `id_criador` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id_criador` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT de tabela `participante`
 --
 ALTER TABLE `participante`
-  MODIFY `id_participante` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
+  MODIFY `id_participante` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=35;
 
 --
 -- AUTO_INCREMENT de tabela `sala`
 --
 ALTER TABLE `sala`
-  MODIFY `id_sala` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
+  MODIFY `id_sala` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
 -- Restrições para tabelas despejadas
