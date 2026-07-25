@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: db
--- Tempo de geração: 25/07/2026 às 03:34
+-- Tempo de geração: 25/07/2026 às 18:23
 -- Versão do servidor: 10.4.34-MariaDB-1:10.4.34+maria~ubu2004
 -- Versão do PHP: 8.3.32
 
@@ -61,7 +61,9 @@ CREATE TABLE `sala` (
   `tempo_de_fala` time DEFAULT NULL,
   `encerrada` tinyint(4) NOT NULL DEFAULT 0,
   `data_inicio` datetime DEFAULT NULL,
-  `data_fim` datetime DEFAULT NULL
+  `data_fim` datetime DEFAULT NULL,
+  `fk_participante_falando` int(11) DEFAULT NULL,
+  `fala_inicio` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -86,7 +88,8 @@ ALTER TABLE `participante`
 -- Índices de tabela `sala`
 --
 ALTER TABLE `sala`
-  ADD PRIMARY KEY (`id_sala`);
+  ADD PRIMARY KEY (`id_sala`),
+  ADD KEY `sala_ibfk_falando` (`fk_participante_falando`);
 
 --
 -- AUTO_INCREMENT para tabelas despejadas
@@ -96,19 +99,19 @@ ALTER TABLE `sala`
 -- AUTO_INCREMENT de tabela `criador`
 --
 ALTER TABLE `criador`
-  MODIFY `id_criador` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id_criador` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT de tabela `participante`
 --
 ALTER TABLE `participante`
-  MODIFY `id_participante` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=35;
+  MODIFY `id_participante` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=48;
 
 --
 -- AUTO_INCREMENT de tabela `sala`
 --
 ALTER TABLE `sala`
-  MODIFY `id_sala` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
+  MODIFY `id_sala` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
 
 --
 -- Restrições para tabelas despejadas
@@ -125,6 +128,12 @@ ALTER TABLE `criador`
 --
 ALTER TABLE `participante`
   ADD CONSTRAINT `participante_ibfk_1` FOREIGN KEY (`fk_sala_atual`) REFERENCES `sala` (`id_sala`);
+
+--
+-- Restrições para tabelas `sala`
+--
+ALTER TABLE `sala`
+  ADD CONSTRAINT `sala_ibfk_falando` FOREIGN KEY (`fk_participante_falando`) REFERENCES `participante` (`id_participante`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

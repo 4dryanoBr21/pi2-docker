@@ -68,7 +68,7 @@ if (isset($_POST['submit'])) {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
     <link href='https://fonts.googleapis.com/css?family=Montserrat' rel='stylesheet'>
     <link rel="stylesheet" href="../style.css">
-    <link rel="shortcut icon" href="../img/MI_legenda_branco.png" type="image/x-icon">
+    <link rel="shortcut icon" href="img/MI_legenda_branco.png" type="image/x-icon">
     <title>ME INSCREVO - Criar Sala</title>
 </head>
 
@@ -78,7 +78,7 @@ if (isset($_POST['submit'])) {
             <div class="col-md-4"></div>
             <div class="col-md-4">
                 <div class="text-center">
-                    <img src="../img/MI_legenda.png" class="rounded" alt="Logo" style="height: 200px;">
+                    <img src="../img/MI_legenda.png" class="rounded" alt="Logo" style="height: 300px;">
                 </div>
                 <div class="card">
                     <div class="card-body">
@@ -90,8 +90,8 @@ if (isset($_POST['submit'])) {
                             <label for="codigo" class="form-label">Código da Sala</label>
                             <input name="codigo" type="text" class="form-control" id="codigo" value="<?php echo htmlspecialchars($codigo_sala, ENT_QUOTES); ?>" required /><br>
 
-                            <label for="tempo" class="form-label">Tempo de fala dos participantes</label>
-                            <input name="tempo" type="time" class="form-control" id="tempo" required /><br>
+                            <label for="tempo" class="form-label">Tempo de fala dos participantes (horas:minutos:segundos)</label>
+                            <input name="tempo" type="time" step="1" class="form-control" id="tempo" required /><br>
 
                             <div class="d-grid gap-2">
                                 <button class="btn btn-dark" name="submit" type="submit">Criar</button>

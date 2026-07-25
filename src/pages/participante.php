@@ -37,38 +37,52 @@ $stmt->close();
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
     <link href='https://fonts.googleapis.com/css?family=Montserrat' rel='stylesheet'>
     <link rel="stylesheet" href="../style.css">
-    <link rel="shortcut icon" href="../img/MI_legenda_branco.png" type="image/x-icon">
+    <link rel="shortcut icon" href="img/MI_legenda_branco.png" type="image/x-icon">
     <title>ME INSCREVO - <?php echo htmlspecialchars($nome_sala); ?></title>
 </head>
 
 <body>
     <div class="container">
         <div class="row">
-            <div class="col-md-4"></div>
-            <div class="col-md-4">
+            <div class="col-md-3"></div>
+            <div class="col-md-6">
                 <div class="text-center">
-                    <img src="../img/MI_legenda.png" class="rounded" alt="Logo" style="height: 200px;">
+                    <img src="../img/MI_legenda.png" class="rounded" alt="Logo" style="height: 220px;">
                 </div>
                 <div class="card">
                     <button type="button" class="btn-close" id="btnSair" aria-label="Close"></button>
-                    <h2 class="text-center fw-bold"><?php echo htmlspecialchars($nome_sala); ?></h2>
                     <div class="card-body">
-                        <div id="listaUsuarios" class="d-grid gap-2 overflow-auto shadow p-3 mb-5 bg-body-tertiary rounded"
-                            style="height: 200px;">
+                        <h2 class="text-center fw-bold"><?php echo htmlspecialchars($nome_sala); ?></h2>
+
+                        <div id="painelEstado" class="text-center p-4 mb-3 rounded shadow-sm" style="background:#f5f5f5;">
+                            <div id="estadoAguardando">
+                                <p class="mb-1">Aguardando...</p>
+                                <p id="posicaoFila" class="text-muted">Levante a mão para entrar na fila.</p>
+                            </div>
+                            <div id="estadoFalando" style="display:none;">
+                                <h4 class="fw-bold mb-1">É a sua vez de falar!</h4>
+                                <div style="font-size: 48px;" id="contadorFala">00:00</div>
+                            </div>
                         </div>
+
                         <div class="d-grid gap-2">
                             <button id="mao" class="btn" type="button" style="font-size: 75px;">🤚</button>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-4"></div>
+            <div class="col-md-3"></div>
         </div>
     </div>
 
     <script>
+        const idSala = <?php echo $id_sala; ?>;
+        const idParticipante = <?php echo $_SESSION['id_participante']; ?>;
+        let restanteLocal = null;
+        let maoLevantada = false;
+
         function verificarSala() {
-            fetch("../functions/verifica_sala.php?id_sala=<?php echo $id_sala; ?>")
+            fetch("../functions/verifica_sala.php?id_sala=" + idSala)
                 .then(res => res.text())
                 .then(resp => {
                     if (resp.trim() === "1") {
@@ -77,47 +91,65 @@ $stmt->close();
                 });
         }
 
-        setInterval(verificarSala, 1000);
-    </script>
+        function formatarMMSS(totalSegundos) {
+            const m = Math.floor(totalSegundos / 60).toString().padStart(2, "0");
+            const s = Math.floor(totalSegundos % 60).toString().padStart(2, "0");
+            return `${m}:${s}`;
+        }
 
-    <script>
+        function atualizarEstado() {
+            fetch("../functions/estado_sala.php?id_sala=" + idSala)
+                .then(res => res.json())
+                .then(estado => {
+                    if (estado.erro) {
+                        window.location.href = "../index.php";
+                        return;
+                    }
+
+                    const souEu = estado.falando && estado.falando.id_participante === idParticipante;
+
+                    if (souEu) {
+                        document.getElementById("estadoAguardando").style.display = "none";
+                        document.getElementById("estadoFalando").style.display = "block";
+                        restanteLocal = estado.falando.restante_segundos;
+                        document.getElementById("contadorFala").textContent = formatarMMSS(restanteLocal);
+                    } else {
+                        document.getElementById("estadoAguardando").style.display = "block";
+                        document.getElementById("estadoFalando").style.display = "none";
+                        restanteLocal = null;
+
+                        const posicao = estado.fila.findIndex(p => p.id_participante === idParticipante);
+                        if (posicao === -1) {
+                            document.getElementById("posicaoFila").textContent = "Levante a mão para entrar na fila.";
+                            maoLevantada = false;
+                        } else {
+                            document.getElementById("posicaoFila").textContent =
+                                `Você é o ${posicao + 1}º da fila (${estado.fila.length} no total).`;
+                            maoLevantada = true;
+                        }
+                    }
+
+                    document.getElementById("mao").textContent = maoLevantada || souEu ? "❌" : "🤚";
+                })
+                .catch(err => console.error("Erro ao buscar estado da sala:", err));
+        }
+
         document.getElementById("mao").addEventListener("click", () => {
-
-            const idParticipante = <?php echo $_SESSION['id_participante']; ?>;
-
             fetch("../functions/salvar_hora.php", {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/x-www-form-urlencoded"
-                    },
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
                     body: "id_participante=" + idParticipante
                 })
                 .then(res => res.text())
-                .then(resp => {
-                    if (resp === "hora") {
-                        console.log("Data/hora registrada");
-                    } else if (resp === "null") {
-                        console.log("Data/hora removida (NULL)");
-                    } else {
-                        console.log("Erro ao alternar horário");
-                    }
-                });
+                .then(() => atualizarEstado())
+                .catch(err => console.error("Erro ao alternar horário:", err));
         });
-    </script>
 
-    <script>
-        const idParticipante = <?php echo $_SESSION['id_participante']; ?>;
-    </script>
-
-    <script>
         document.getElementById("btnSair").addEventListener("click", function() {
             const formData = new FormData();
             formData.append("id_participante", idParticipante);
 
-            fetch("../functions/sair_sala.php", {
-                    method: "POST",
-                    body: formData
-                })
+            fetch("../functions/sair_sala.php", { method: "POST", body: formData })
                 .then(res => res.text())
                 .then(ret => {
                     if (ret.trim() === "ok") {
@@ -128,28 +160,16 @@ $stmt->close();
                 })
                 .catch(err => console.error("Erro:", err));
         });
-    </script>
 
-    <script>
-        function atualizarUsuarios() {
-            fetch("../functions/get_usuarios.php?id_sala=<?php echo $id_sala; ?>")
-                .then(res => res.text())
-                .then(html => {
-                    document.getElementById("listaUsuarios").innerHTML = html;
-                })
-                .catch(err => console.error("Erro ao buscar usuários:", err));
-        }
-
-        setInterval(atualizarUsuarios, 1000);
-        atualizarUsuarios();
-    </script>
-
-    <script>
-        const emoji = document.getElementById("mao");
-
-        emoji.addEventListener("click", () => {
-            emoji.textContent = emoji.textContent === "🤚" ? "❌" : "🤚";
-        });
+        setInterval(verificarSala, 1000);
+        setInterval(() => {
+            if (restanteLocal !== null) {
+                restanteLocal = Math.max(0, restanteLocal - 1);
+                document.getElementById("contadorFala").textContent = formatarMMSS(restanteLocal);
+            }
+        }, 1000);
+        setInterval(atualizarEstado, 2000);
+        atualizarEstado();
     </script>
 
 </body>
