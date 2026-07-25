@@ -5,8 +5,8 @@ session_start();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    $codigo = trim(filter_input(INPUT_POST, 'codigo', FILTER_SANITIZE_STRING));
-    $nome = trim(filter_input(INPUT_POST, 'nome', FILTER_SANITIZE_STRING));
+    $codigo = trim(htmlspecialchars($_POST['codigo'] ?? '', ENT_QUOTES, 'UTF-8'));
+    $nome = trim(htmlspecialchars($_POST['nome'] ?? '', ENT_QUOTES, 'UTF-8'));
 
     if (empty($codigo)) {
         echo "Preencha o código da sala!";
