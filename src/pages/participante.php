@@ -47,7 +47,7 @@ $stmt->close();
             <div class="col-md-3"></div>
             <div class="col-md-6">
                 <div class="text-center">
-                    <img src="../img/MI_legenda.png" class="rounded" alt="Logo" style="height: 220px;">
+                    <img class="logo-black" src="../img/MI_legenda.png" class="rounded" alt="Logo">
                 </div>
                 <div class="card">
                     <button type="button" class="btn-close" id="btnSair" aria-label="Close"></button>

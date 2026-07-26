@@ -78,7 +78,7 @@ if (isset($_POST['submit'])) {
             <div class="col-md-4"></div>
             <div class="col-md-4">
                 <div class="text-center">
-                    <img src="../img/MI_legenda.png" class="rounded" alt="Logo" style="height: 300px;">
+                    <img class="logo-black" src="../img/MI_legenda.png" class="rounded" alt="Logo">
                 </div>
                 <div class="card">
                     <div class="card-body">
