@@ -33,8 +33,11 @@ $stmt->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
+        crossorigin="anonymous"></script>
     <link href='https://fonts.googleapis.com/css?family=Montserrat' rel='stylesheet'>
     <link rel="stylesheet" href="../style.css">
     <link rel="shortcut icon" href="img/MI_legenda_branco.png" type="image/x-icon">
@@ -54,7 +57,8 @@ $stmt->close();
                     <div class="card-body">
                         <h2 class="text-center fw-bold"><?php echo htmlspecialchars($nome_sala); ?></h2>
 
-                        <div id="painelEstado" class="text-center p-4 mb-3 rounded shadow-sm" style="background:#f5f5f5;">
+                        <div id="painelEstado" class="text-center p-4 mb-3 rounded shadow-sm"
+                            style="background:#f5f5f5;">
                             <div id="estadoAguardando">
                                 <p class="mb-1">Aguardando...</p>
                                 <p id="posicaoFila" class="text-muted">Levante a mão para entrar na fila.</p>
@@ -136,16 +140,16 @@ $stmt->close();
 
         document.getElementById("mao").addEventListener("click", () => {
             fetch("../functions/salvar_hora.php", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                    body: "id_participante=" + idParticipante
-                })
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: "id_participante=" + idParticipante
+            })
                 .then(res => res.text())
                 .then(() => atualizarEstado())
                 .catch(err => console.error("Erro ao alternar horário:", err));
         });
 
-        document.getElementById("btnSair").addEventListener("click", function() {
+        document.getElementById("btnSair").addEventListener("click", function () {
             const formData = new FormData();
             formData.append("id_participante", idParticipante);
 

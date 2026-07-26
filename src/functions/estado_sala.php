@@ -28,7 +28,7 @@ if (!$sala) {
 }
 
 list($h, $m, $s) = explode(':', $sala['tempo_de_fala']);
-$duracao_segundos = ((int)$h * 3600) + ((int)$m * 60) + (int)$s;
+$duracao_segundos = ((int) $h * 3600) + ((int) $m * 60) + (int) $s;
 
 $falando = null;
 
@@ -46,7 +46,7 @@ if ($sala['fk_participante_falando']) {
         $restante = max(0, $duracao_segundos - $decorrido);
 
         $falando = [
-            'id_participante' => (int)$p['id_participante'],
+            'id_participante' => (int) $p['id_participante'],
             'nome' => $p['nome_participante'],
             'restante_segundos' => $restante,
         ];
@@ -69,12 +69,12 @@ $result = $stmt->get_result();
 
 $fila = [];
 while ($row = $result->fetch_assoc()) {
-    $fila[] = ['id_participante' => (int)$row['id_participante'], 'nome' => $row['nome_participante']];
+    $fila[] = ['id_participante' => (int) $row['id_participante'], 'nome' => $row['nome_participante']];
 }
 $stmt->close();
 
 echo json_encode([
-    'encerrada' => (bool)$sala['encerrada'],
+    'encerrada' => (bool) $sala['encerrada'],
     'duracao_segundos' => $duracao_segundos,
     'data_inicio' => $sala['data_inicio'],
     'falando' => $falando,

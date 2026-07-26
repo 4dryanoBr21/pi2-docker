@@ -35,7 +35,7 @@ if ($result->num_rows === 0) {
 
 $proximo = $result->fetch_assoc();
 $stmt->close();
-$id_participante = (int)$proximo['id_participante'];
+$id_participante = (int) $proximo['id_participante'];
 
 $stmt2 = $mysqli->prepare("UPDATE sala SET fk_participante_falando = ?, fala_inicio = NOW() WHERE id_sala = ?");
 $stmt2->bind_param("ii", $id_participante, $id_sala);
