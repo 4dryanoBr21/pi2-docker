@@ -1,15 +1,59 @@
 <?php
 include("../functions/conexao.php");
 
+// Variáveis para controlar as mensagens e os tipos de alerta
+$mensagem = "";
+$tipo_alerta = "";
+
+// Mantém o que o usuário digitou na tela, mesmo se a validação falhar
+$nome = "";
+$email = "";
+
 if (isset($_POST['submit'])) {
 
-    $nome = $_POST['nome'];
-    $email = $_POST['email'];
-    $senha = $_POST['senha'];
+    $nome = trim(htmlspecialchars($_POST['nome'] ?? '', ENT_QUOTES, 'UTF-8'));
+    $email = trim(htmlspecialchars($_POST['email'] ?? '', ENT_QUOTES, 'UTF-8'));
+    $senha_texto = $_POST['senha'] ?? '';
 
-    $result = mysqli_query($mysqli, "INSERT INTO criador (nome_criador, email, senha) VALUES ('$nome', '$email', '$senha')");
+    if ($nome === '' || $email === '' || $senha_texto === '') {
+        $mensagem = "Preencha todos os campos.";
+        $tipo_alerta = "danger";
+    } else {
+        $stmt_check = $mysqli->prepare("SELECT id_criador FROM criador WHERE nome_criador = ? OR email = ?");
+        if ($stmt_check) {
+            $stmt_check->bind_param("ss", $nome, $email);
+            $stmt_check->execute();
+            $result_check = $stmt_check->get_result();
 
-    header("Location: login.php");
+            if ($result_check && $result_check->num_rows > 0) {
+                $mensagem = "Usuário ou E-mail já cadastrado no sistema.";
+                $tipo_alerta = "danger";
+            } else {
+                // Nunca gravar a senha em texto puro — gera um hash seguro (bcrypt)
+                $senha_hash = password_hash($senha_texto, PASSWORD_DEFAULT);
+
+                $stmt_insert = $mysqli->prepare("INSERT INTO criador (nome_criador, email, senha) VALUES (?, ?, ?)");
+                if ($stmt_insert) {
+                    $stmt_insert->bind_param("sss", $nome, $email, $senha_hash);
+
+                    if ($stmt_insert->execute()) {
+                        $mensagem = 'Usuário cadastrado com sucesso. Clique em <a href="login.php" class="alert-link">aqui</a> para continuar';
+                        $tipo_alerta = "success";
+                        $nome = "";
+                        $email = "";
+                    } else {
+                        $mensagem = "Erro ao realizar o cadastro no banco de dados.";
+                        $tipo_alerta = "danger";
+                    }
+                    $stmt_insert->close();
+                }
+            }
+            $stmt_check->close();
+        } else {
+            $mensagem = "Erro interno no servidor de dados.";
+            $tipo_alerta = "danger";
+        }
+    }
 }
 ?>
 <html>
@@ -37,23 +81,34 @@ if (isset($_POST['submit'])) {
                     <img class="logo-black" src="../img/MI_legenda.png" class="rounded" alt="Logo">
                 </div>
                 <div class="card">
+                    <button type="button" class="btn-close" id="btnSair" aria-label="Close"></button>
                     <div class="card-body">
                         <h2 class="text-center fw-bold">Register</h2><br>
+
+                        <?php if (!empty($mensagem)): ?>
+                            <div class="alert alert-<?php echo $tipo_alerta; ?>" role="alert">
+                                <?php echo $mensagem; ?>
+                            </div>
+                        <?php endif; ?>
+
                         <form action="" method="POST">
                             <label for="exampleInput1" class="form-label">Username</label>
-                            <input name="nome" type="text" class="form-control" id="exampleInput1" required><br>
+                            <input name="nome" type="text" class="form-control" id="exampleInput1"
+                                value="<?php echo $nome; ?>" required><br>
 
                             <label for="exampleInputEmail1" class="form-label">Email address</label>
                             <input name="email" type="email" class="form-control" id="exampleInputEmail1"
-                                aria-describedby="emailHelp" required><br>
+                                value="<?php echo $email; ?>" aria-describedby="emailHelp" required><br>
 
                             <label for="exampleInputPassword1" class="form-label">Password</label>
-                            <input name="senha" type="password" class="form-control" id="exampleInputPassword1"
-                                required><br>
+                            <div class="input-group">
+                                <input name="senha" type="password" class="form-control" id="exampleInputPassword1"
+                                    required>
+                                <button class="btn btn-outline-secondary" type="button" id="gerarSenha">Gerar</button>
+                            </div><br>
 
                             <div class="d-grid gap-2">
                                 <button class="btn btn-dark" name="submit" type="submit">Registrar</button>
-                                <button id="login_page" class="btn" type="button">Login</button>
                             </div>
                         </form>
                     </div>
@@ -65,13 +120,25 @@ if (isset($_POST['submit'])) {
 </body>
 
 <script>
-    const login = document.getElementById("login_page")
+    document.getElementById("btnSair").addEventListener("click", () => {
+        window.open("../functions/logout.php", "_self");
+    });
 
-    function login_page() {
-        window.open("login.php", "_self")
-    }
+    document.getElementById("gerarSenha").addEventListener("click", () => {
+        const caracteres = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*";
+        let senha = "";
+        for (let i = 0; i < 12; i++) {
+            senha += caracteres[Math.floor(Math.random() * caracteres.length)];
+        }
 
-    login.addEventListener("click", login_page)
+        const campo = document.getElementById("exampleInputPassword1");
+        campo.type = "text";
+        campo.value = senha;
+
+        setTimeout(() => {
+            campo.type = "password";
+        }, 1500);
+    });
 </script>
 
 </html>

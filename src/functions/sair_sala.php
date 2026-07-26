@@ -9,6 +9,13 @@ if (!isset($_POST['id_participante'])) {
 
 $id_participante = intval($_POST['id_participante']);
 
+// só permite que o participante mexa no próprio registro, nunca no de outra pessoa
+if (!isset($_SESSION['id_participante']) || (int) $_SESSION['id_participante'] !== $id_participante) {
+    http_response_code(403);
+    echo "erro";
+    exit;
+}
+
 // se o participante que está saindo era quem estava com a palavra, libera a vez
 $stmt0 = $mysqli->prepare("
     UPDATE sala

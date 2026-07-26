@@ -4,7 +4,7 @@ services:
     container_name: pi2_app
     restart: unless-stopped
     ports:
-      - "8080:80"
+      - "1234:80"
     volumes:
       - ./src:/var/www/html
     depends_on:
@@ -18,10 +18,10 @@ services:
     container_name: pi2_db
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: root
+      MYSQL_ROOT_PASSWORD: root # Trocar em produção
       MYSQL_DATABASE: projetomi
-      MYSQL_USER: projetomi_user
-      MYSQL_PASSWORD: projetomi_pass
+      MYSQL_USER: projetomi_user # Trocar em produção
+      MYSQL_PASSWORD: projetomi_pass # Trocar em produção
     ports:
       - "3306:3306"
     volumes:
@@ -41,11 +41,11 @@ services:
     container_name: pi2_phpmyadmin
     restart: unless-stopped
     environment:
-      PMA_HOST: db
-      PMA_USER: root
-      PMA_PASSWORD: root
+      PMA_HOST: db 
+      PMA_USER: root # Trocar em produção
+      PMA_PASSWORD: root # Trocar em produção
     ports:
-      - "8081:80"
+      - "5678:80"
     depends_on:
       - db
     networks:

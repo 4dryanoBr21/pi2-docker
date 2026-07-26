@@ -2,32 +2,81 @@
 session_start();
 include("../functions/conexao.php");
 
-if (isset($_POST['email']) || isset($_POST['senha'])) {
+$erro = "";
 
-    if (strlen($_POST['email']) == 0) {
-        echo "Prencha seu email!";
-    } else if (strlen($_POST['senha']) == 0) {
-        echo "Prencha sua senha!";
+// tempo, em minutos, que uma sessão precisa ficar sem atividade para ser
+// considerada "expirada" e liberar um novo login em outro lugar
+$LIMITE_INATIVIDADE_MINUTOS = 1;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $email = trim($_POST['email'] ?? '');
+    $senha = trim($_POST['senha'] ?? '');
+
+    if (empty($email)) {
+        $erro = "Preencha seu email!";
+    } else if (empty($senha)) {
+        $erro = "Preencha sua senha!";
     } else {
+        $stmt = $mysqli->prepare("SELECT id_criador, nome_criador, senha, session_token, session_last_activity FROM criador WHERE email = ?");
+        if ($stmt) {
+            $stmt->bind_param("s", $email);
+            $stmt->execute();
+            $result = $stmt->get_result();
 
-        $email = $mysqli->real_escape_string($_POST['email']);
-        $senha = $mysqli->real_escape_string($_POST['senha']);
+            if ($result && $result->num_rows === 1) {
+                $usuario = $result->fetch_assoc();
 
-        $sql_code = "SELECT * FROM criador WHERE email = '$email' AND senha = '$senha'";
-        $sql_query = $mysqli->query($sql_code) or die("Falha na execução do SQL: " . $mysqli->error);
+                if (password_verify($senha, $usuario['senha'])) {
+                    $id_criador = $usuario['id_criador'];
 
-        $quantidade = $sql_query->num_rows;
+                    // verifica se já existe uma sessão ativa (token presente e atividade recente)
+                    $sessao_ativa = false;
 
-        if ($quantidade == 1) {
+                    if (!empty($usuario['session_token']) && !empty($usuario['session_last_activity'])) {
+                        $ultima = new DateTime($usuario['session_last_activity']);
+                        $agora = new DateTime();
+                        $minutos_parado = ($agora->getTimestamp() - $ultima->getTimestamp()) / 60;
 
-            $usuario = $sql_query->fetch_assoc();
+                        if ($minutos_parado < $LIMITE_INATIVIDADE_MINUTOS) {
+                            $sessao_ativa = true;
+                        }
+                    }
 
-            $_SESSION['id_criador'] = $usuario['id_criador'];
-            $_SESSION['nome_criador'] = $usuario['nome_criador'];
+                    if ($sessao_ativa) {
+                        $erro = "Esta conta já está logada em outro dispositivo/aba. Saia de lá primeiro, ou aguarde alguns minutos de inatividade e tente novamente.";
+                    } else {
+                        // 1. Gera um Token único e aleatório para esta nova sessão do dispositivo
+                        $novo_token = bin2hex(random_bytes(32));
 
-            header("Location: criar.php");
+                        // 2. Atualiza o banco de dados com o novo token e marca a atividade como agora
+                        $stmt_token = $mysqli->prepare("UPDATE criador SET session_token = ?, session_last_activity = NOW() WHERE id_criador = ?");
+                        if ($stmt_token) {
+                            $stmt_token->bind_param("si", $novo_token, $id_criador);
+                            $stmt_token->execute();
+                            $stmt_token->close();
+
+                            // 3. Regenera o ID de sessão (evita fixação de sessão) e grava os dados
+                            session_regenerate_id(true);
+                            $_SESSION['id_criador'] = $id_criador;
+                            $_SESSION['nome_criador'] = $usuario['nome_criador'];
+                            $_SESSION['session_token'] = $novo_token;
+
+                            $stmt->close();
+                            header("Location: criar.php");
+                            exit();
+                        } else {
+                            $erro = "Erro interno ao registrar sessão.";
+                        }
+                    }
+                } else {
+                    $erro = "Usuário ou senha incorretos!";
+                }
+            } else {
+                $erro = "Usuário ou senha incorretos!";
+            }
+            $stmt->close();
         } else {
-            echo "email ou senha incorretos!";
+            $erro = "Erro interno no servidor de banco de dados.";
         }
     }
 }
@@ -57,15 +106,23 @@ if (isset($_POST['email']) || isset($_POST['senha'])) {
                 <div class="text-center">
                     <img class="logo-black" src="../img/MI_legenda.png" class="rounded" alt="Logo">
                 </div>
-                <div class="card">
+                <div class="card shadow">
+                    <button type="button" class="btn-close" id="btnSair" aria-label="Close"></button>
                     <div class="card-body">
                         <h2 class="text-center fw-bold">Login</h2><br>
                         <form action="" method="POST">
-                            <label for="email" class="form-label">Endereço de email</label>
-                            <input name="email" type="email" class="form-control" id="email"><br>
+                            <?php if (!empty($erro)): ?>
+                                <div class="alert alert-danger" role="alert">
+                                    <?php echo htmlspecialchars($erro, ENT_QUOTES, 'UTF-8'); ?>
+                                </div>
+                            <?php endif; ?>
+                            <label for="email" class="form-label">Nome de usuário ou e-mail</label>
+                            <input name="email" type="email" class="form-control" id="email"
+                                value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email'], ENT_QUOTES, 'UTF-8') : ''; ?>"
+                                required><br>
 
                             <label for="password" class="form-label">Senha</label>
-                            <input name="senha" type="password" class="form-control" id="password"><br>
+                            <input name="senha" type="password" class="form-control" id="password" required><br>
 
                             <div class="d-grid gap-2">
                                 <button class="btn btn-dark" name="submit" type="submit">Entrar</button>
@@ -82,6 +139,10 @@ if (isset($_POST['email']) || isset($_POST['senha'])) {
     <script>
         document.getElementById("cad").addEventListener("click", () => {
             window.open("register.php", "_self");
+        });
+
+        document.getElementById("btnSair").addEventListener("click", () => {
+            window.open("../functions/logout.php", "_self");
         });
     </script>
 </body>

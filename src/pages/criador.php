@@ -1,13 +1,56 @@
 <?php
 include('../functions/conexao.php');
 
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+  session_start();
+}
+
+// mesma checagem de sessão usada em criar.php: token precisa bater com o
+// que está gravado no banco para este criador
+$autenticado = false;
+
+if (isset($_SESSION['id_criador']) && isset($_SESSION['session_token'])) {
+  $stmt_auth = $mysqli->prepare("SELECT session_token FROM criador WHERE id_criador = ?");
+  if ($stmt_auth) {
+    $stmt_auth->bind_param("i", $_SESSION['id_criador']);
+    $stmt_auth->execute();
+    $res_auth = $stmt_auth->get_result()->fetch_assoc();
+    $stmt_auth->close();
+
+    if ($res_auth && $res_auth['session_token'] === $_SESSION['session_token']) {
+      $autenticado = true;
+    }
+  }
+}
+
+if (!$autenticado) {
+  header('Location: login.php');
+  exit();
+}
 
 if (!isset($_GET['id_sala'])) {
   die("Sala não especificada. <a href='criar.php'>Voltar</a>");
 }
 
 $id_sala = intval($_GET['id_sala']);
+
+// garante que a sala pertence ao criador autenticado (evita que alguém
+// acesse/controle a sala de outra pessoa só sabendo o id_sala)
+$stmt_dono = $mysqli->prepare("SELECT 1 FROM criador WHERE id_criador = ? AND fk_sala_criada = ?");
+$stmt_dono->bind_param("ii", $_SESSION['id_criador'], $id_sala);
+$stmt_dono->execute();
+$eh_dono = $stmt_dono->get_result()->num_rows > 0;
+$stmt_dono->close();
+
+if (!$eh_dono) {
+  die("Você não tem permissão para acessar esta sala. <a href='criar.php'>Voltar</a>");
+}
+
+// registra que esta sessão está ativa agora
+$stmt_touch = $mysqli->prepare("UPDATE criador SET session_last_activity = NOW() WHERE id_criador = ?");
+$stmt_touch->bind_param("i", $_SESSION['id_criador']);
+$stmt_touch->execute();
+$stmt_touch->close();
 
 $mysqli->query("UPDATE sala SET data_inicio = NOW() WHERE id_sala = $id_sala AND data_inicio IS NULL");
 
@@ -41,6 +84,8 @@ if ($result->num_rows > 0) {
 </head>
 
 <body>
+  <a href="../functions/logout.php" class="btn btn-sm btn-outline-dark"
+    style="position:absolute; top:16px; right:16px;">Sair</a>
   <div class="container">
     <div class="row">
       <div class="col-md-3"></div>
@@ -185,6 +230,19 @@ if ($result->num_rows > 0) {
         }
       }
     }, 1000);
+
+    function verificarSessao() {
+      fetch("../functions/verifica_sessao.php")
+        .then(res => res.json())
+        .then(estado => {
+          if (!estado.valido) {
+            window.location.href = "login.php";
+          }
+        })
+        .catch(err => console.error("Erro ao verificar sessão:", err));
+    }
+
+    setInterval(verificarSessao, 5000);
 
     setInterval(atualizarEstado, 3000);
     atualizarEstado();

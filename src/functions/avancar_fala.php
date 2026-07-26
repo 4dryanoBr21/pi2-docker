@@ -1,7 +1,27 @@
 <?php
+session_start();
 include('conexao.php');
 
 header('Content-Type: application/json; charset=utf-8');
+
+if (!isset($_SESSION['id_criador']) || !isset($_SESSION['session_token'])) {
+    http_response_code(403);
+    echo json_encode(['erro' => 'não autenticado']);
+    exit;
+}
+
+// confirma que o token desta sessão ainda é o mais recente
+$stmt_token = $mysqli->prepare("SELECT session_token FROM criador WHERE id_criador = ?");
+$stmt_token->bind_param("i", $_SESSION['id_criador']);
+$stmt_token->execute();
+$row_token = $stmt_token->get_result()->fetch_assoc();
+$stmt_token->close();
+
+if (!$row_token || !hash_equals((string) $row_token['session_token'], (string) $_SESSION['session_token'])) {
+    http_response_code(403);
+    echo json_encode(['erro' => 'sessão invalidada']);
+    exit;
+}
 
 if (!isset($_POST['id_sala'])) {
     http_response_code(400);
@@ -10,6 +30,25 @@ if (!isset($_POST['id_sala'])) {
 }
 
 $id_sala = intval($_POST['id_sala']);
+
+// confirma que a sala pertence ao criador da sessão atual
+$stmt_dono = $mysqli->prepare("SELECT 1 FROM criador WHERE id_criador = ? AND fk_sala_criada = ?");
+$stmt_dono->bind_param("ii", $_SESSION['id_criador'], $id_sala);
+$stmt_dono->execute();
+$eh_dono = $stmt_dono->get_result()->num_rows > 0;
+$stmt_dono->close();
+
+if (!$eh_dono) {
+    http_response_code(403);
+    echo json_encode(['erro' => 'sem permissão para esta sala']);
+    exit;
+}
+
+// renova a marca de atividade desta sessão
+$stmt_touch = $mysqli->prepare("UPDATE criador SET session_last_activity = NOW() WHERE id_criador = ?");
+$stmt_touch->bind_param("i", $_SESSION['id_criador']);
+$stmt_touch->execute();
+$stmt_touch->close();
 
 $stmt0 = $mysqli->prepare("UPDATE sala SET fk_participante_falando = NULL, fala_inicio = NULL WHERE id_sala = ?");
 $stmt0->bind_param("i", $id_sala);

@@ -3,15 +3,18 @@ require('functions/conexao.php');
 
 session_start();
 
+// Criamos uma variável para armazenar os erros
+$erro = "";
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $codigo = trim(htmlspecialchars($_POST['codigo'] ?? '', ENT_QUOTES, 'UTF-8'));
     $nome = trim(htmlspecialchars($_POST['nome'] ?? '', ENT_QUOTES, 'UTF-8'));
 
     if (empty($codigo)) {
-        echo "Preencha o código da sala!";
+        $erro = "Preencha o código da sala!";
     } elseif (empty($nome)) {
-        echo "Preencha seu nome!";
+        $erro = "Preencha seu nome!";
     } else {
 
         $stmt = $mysqli->prepare("SELECT id_sala, nome_sala FROM sala WHERE codigo_sala = ?");
@@ -37,17 +40,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         header("Location: pages/participante.php");
                         exit;
                     } else {
-                        echo "Erro ao inserir participante.";
+                        $erro = "Erro ao inserir participante.";
                     }
                     $stmt_insert->close();
                 }
             } else {
-                echo "Código de sala inválido.";
+                // Modificado aqui: guardando na variável em vez de dar 'echo'
+                $erro = "Código de sala inválido.";
             }
 
             $stmt->close();
         } else {
-            echo "Erro ao preparar consulta SQL.";
+            $erro = "Erro ao preparar consulta SQL.";
         }
     }
 }
@@ -80,6 +84,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="card-body">
                         <h2 class="text-center fw-bold">Entrar na Sala</h2><br>
                         <form action="" method="POST">
+                            <?php if (!empty($erro)): ?>
+                                <div class="alert alert-danger" role="alert">
+                                    <?php echo $erro; ?>
+                                </div>
+                            <?php endif; ?>
                             <label for="codigo" class="form-label">Código da Sala</label>
                             <input name="codigo" type="text" class="form-control" id="codigo" required><br>
 
