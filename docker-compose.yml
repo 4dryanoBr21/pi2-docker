@@ -4,7 +4,7 @@ services:
     container_name: pi2_app
     restart: unless-stopped
     ports:
-      - "1234:80"
+      - "8192:80"
     volumes:
       - ./src:/var/www/html
     depends_on:
@@ -45,7 +45,7 @@ services:
       PMA_USER: root # Trocar em produção
       PMA_PASSWORD: root # Trocar em produção
     ports:
-      - "5678:80"
+      - "8168:80"
     depends_on:
       - db
     networks:
