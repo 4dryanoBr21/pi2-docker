@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: db
--- Tempo de geração: 25/07/2026 às 18:23
+-- Tempo de geração: 27/07/2026 às 01:11
 -- Versão do servidor: 10.4.34-MariaDB-1:10.4.34+maria~ubu2004
 -- Versão do PHP: 8.3.32
 
@@ -32,7 +32,9 @@ CREATE TABLE `criador` (
   `nome_criador` varchar(100) DEFAULT NULL,
   `email` varchar(100) DEFAULT NULL,
   `senha` varchar(100) DEFAULT NULL,
-  `fk_sala_criada` int(11) DEFAULT NULL
+  `fk_sala_criada` int(11) DEFAULT NULL,
+  `session_token` varchar(255) DEFAULT NULL,
+  `session_last_activity` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -59,9 +61,7 @@ CREATE TABLE `sala` (
   `nome_sala` varchar(100) DEFAULT NULL,
   `codigo_sala` varchar(100) DEFAULT NULL,
   `tempo_de_fala` time DEFAULT NULL,
-  `encerrada` tinyint(4) NOT NULL DEFAULT 0,
   `data_inicio` datetime DEFAULT NULL,
-  `data_fim` datetime DEFAULT NULL,
   `fk_participante_falando` int(11) DEFAULT NULL,
   `fala_inicio` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -99,19 +99,19 @@ ALTER TABLE `sala`
 -- AUTO_INCREMENT de tabela `criador`
 --
 ALTER TABLE `criador`
-  MODIFY `id_criador` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id_criador` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT de tabela `participante`
 --
 ALTER TABLE `participante`
-  MODIFY `id_participante` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=48;
+  MODIFY `id_participante` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de tabela `sala`
 --
 ALTER TABLE `sala`
-  MODIFY `id_sala` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
+  MODIFY `id_sala` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- Restrições para tabelas despejadas

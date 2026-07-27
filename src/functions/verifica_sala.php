@@ -8,17 +8,12 @@ if (!isset($_GET['id_sala'])) {
 
 $id_sala = intval($_GET['id_sala']);
 
-$stmt = $mysqli->prepare("SELECT encerrada FROM sala WHERE id_sala = ?");
+// como fechar a sala agora significa apagá-la, "sala não existe" já é
+// sinônimo de "sala encerrada" — não depende mais de uma coluna de status
+$stmt = $mysqli->prepare("SELECT 1 FROM sala WHERE id_sala = ?");
 $stmt->bind_param("i", $id_sala);
 $stmt->execute();
 $result = $stmt->get_result();
 
-if ($result->num_rows === 0) {
-    echo "1";
-    exit;
-}
-
-$row = $result->fetch_assoc();
-
-echo ($row['encerrada'] == 1) ? "1" : "0";
+echo ($result->num_rows === 0) ? "1" : "0";
 ?>

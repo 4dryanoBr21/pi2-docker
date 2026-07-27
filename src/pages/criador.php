@@ -2,7 +2,7 @@
 include('../functions/conexao.php');
 
 if (session_status() === PHP_SESSION_NONE) {
-  session_start();
+    session_start();
 }
 
 // mesma checagem de sessão usada em criar.php: token precisa bater com o
@@ -10,22 +10,22 @@ if (session_status() === PHP_SESSION_NONE) {
 $autenticado = false;
 
 if (isset($_SESSION['id_criador']) && isset($_SESSION['session_token'])) {
-  $stmt_auth = $mysqli->prepare("SELECT session_token FROM criador WHERE id_criador = ?");
-  if ($stmt_auth) {
-    $stmt_auth->bind_param("i", $_SESSION['id_criador']);
-    $stmt_auth->execute();
-    $res_auth = $stmt_auth->get_result()->fetch_assoc();
-    $stmt_auth->close();
+    $stmt_auth = $mysqli->prepare("SELECT session_token FROM criador WHERE id_criador = ?");
+    if ($stmt_auth) {
+        $stmt_auth->bind_param("i", $_SESSION['id_criador']);
+        $stmt_auth->execute();
+        $res_auth = $stmt_auth->get_result()->fetch_assoc();
+        $stmt_auth->close();
 
-    if ($res_auth && $res_auth['session_token'] === $_SESSION['session_token']) {
-      $autenticado = true;
+        if ($res_auth && $res_auth['session_token'] === $_SESSION['session_token']) {
+            $autenticado = true;
+        }
     }
-  }
 }
 
 if (!$autenticado) {
-  header('Location: login.php');
-  exit();
+    header('Location: login.php');
+    exit();
 }
 
 if (!isset($_GET['id_sala'])) {
@@ -43,7 +43,7 @@ $eh_dono = $stmt_dono->get_result()->num_rows > 0;
 $stmt_dono->close();
 
 if (!$eh_dono) {
-  die("Você não tem permissão para acessar esta sala. <a href='criar.php'>Voltar</a>");
+    die("Você não tem permissão para acessar esta sala. <a href='criar.php'>Voltar</a>");
 }
 
 // registra que esta sessão está ativa agora
@@ -84,8 +84,7 @@ if ($result->num_rows > 0) {
 </head>
 
 <body>
-  <a href="../functions/logout.php" class="btn btn-sm btn-outline-dark"
-    style="position:absolute; top:16px; right:16px;">Sair</a>
+  <a href="../functions/logout.php" class="btn btn-sm btn-outline-dark" style="position:absolute; top:16px; right:16px;">Sair</a>
   <div class="container">
     <div class="row">
       <div class="col-md-3"></div>
@@ -182,7 +181,7 @@ if ($result->num_rows > 0) {
       fetch("../functions/estado_sala.php?id_sala=" + idSala)
         .then(res => res.json())
         .then(estado => {
-          if (estado.erro || estado.encerrada) {
+          if (estado.erro) {
             window.location.href = "criar.php";
             return;
           }

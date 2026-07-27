@@ -12,7 +12,7 @@ if (!isset($_GET['id_sala'])) {
 $id_sala = intval($_GET['id_sala']);
 
 $stmt = $mysqli->prepare("
-    SELECT fk_participante_falando, fala_inicio, tempo_de_fala, encerrada, data_inicio
+    SELECT fk_participante_falando, fala_inicio, tempo_de_fala, data_inicio
     FROM sala
     WHERE id_sala = ?
 ");
@@ -22,6 +22,7 @@ $sala = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
 if (!$sala) {
+    // sala não existe = sala foi fechada/apagada
     http_response_code(404);
     echo json_encode(['erro' => 'sala não encontrada']);
     exit;
@@ -74,7 +75,6 @@ while ($row = $result->fetch_assoc()) {
 $stmt->close();
 
 echo json_encode([
-    'encerrada' => (bool) $sala['encerrada'],
     'duracao_segundos' => $duracao_segundos,
     'data_inicio' => $sala['data_inicio'],
     'falando' => $falando,
