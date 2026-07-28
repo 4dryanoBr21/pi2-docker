@@ -40,7 +40,7 @@ $stmt->close();
         crossorigin="anonymous"></script>
     <link href='https://fonts.googleapis.com/css?family=Montserrat' rel='stylesheet'>
     <link rel="stylesheet" href="../style.css">
-    <link rel="shortcut icon" href="img/MI_legenda_branco.png" type="image/x-icon">
+    <link rel="shortcut icon" href="../img/MI_legenda_branco.png" type="image/x-icon">
     <title>ME INSCREVO - <?php echo htmlspecialchars($nome_sala); ?></title>
 </head>
 
