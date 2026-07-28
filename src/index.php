@@ -1,62 +1,75 @@
 <?php
 require('functions/conexao.php');
+require('functions/csrf.php');
 
 session_start();
 
-// Criamos uma variável para armazenar os erros
 $erro = "";
+$codigo_valor = "";
+$nome_valor = "";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    $codigo = trim(htmlspecialchars($_POST['codigo'] ?? '', ENT_QUOTES, 'UTF-8'));
-    $nome = trim(htmlspecialchars($_POST['nome'] ?? '', ENT_QUOTES, 'UTF-8'));
-
-    if (empty($codigo)) {
-        $erro = "Preencha o código da sala!";
-    } elseif (empty($nome)) {
-        $erro = "Preencha seu nome!";
+    if (!csrf_verify($_POST['csrf_token'] ?? null)) {
+        $erro = "Sessão expirada. Recarregue a página e tente novamente.";
     } else {
+        // não escapamos HTML aqui — isso é feito só na hora de EXIBIR o dado,
+        // nunca antes de gravar no banco (evita corromper nomes/códigos com
+        // acento, & ou aspas, e evita descasar comparação de código de sala)
+        $codigo = trim($_POST['codigo'] ?? '');
+        $nome = trim($_POST['nome'] ?? '');
+        $codigo_valor = $codigo;
+        $nome_valor = $nome;
 
-        $stmt = $mysqli->prepare("SELECT id_sala, nome_sala FROM sala WHERE codigo_sala = ?");
-        if ($stmt) {
-            $stmt->bind_param("s", $codigo);
-            $stmt->execute();
-            $result = $stmt->get_result();
-
-            if ($result && $result->num_rows === 1) {
-                $sala = $result->fetch_assoc();
-                $id_sala = $sala['id_sala'];
-
-                $stmt_insert = $mysqli->prepare("INSERT INTO participante (nome_participante, fk_sala_atual) VALUES (?, ?)");
-                if ($stmt_insert) {
-                    $stmt_insert->bind_param("si", $nome, $id_sala);
-                    if ($stmt_insert->execute()) {
-
-                        $id_participante = $stmt_insert->insert_id;
-
-                        $_SESSION['codigo'] = $codigo;
-                        $_SESSION['nome'] = $nome;
-                        $_SESSION['id_participante'] = $id_participante;
-                        header("Location: pages/participante.php");
-                        exit;
-                    } else {
-                        $erro = "Erro ao inserir participante.";
-                    }
-                    $stmt_insert->close();
-                }
-            } else {
-                // Modificado aqui: guardando na variável em vez de dar 'echo'
-                $erro = "Código de sala inválido.";
-            }
-
-            $stmt->close();
+        if (empty($codigo)) {
+            $erro = "Preencha o código da sala!";
+        } elseif (empty($nome)) {
+            $erro = "Preencha seu nome!";
+        } elseif (mb_strlen($nome) > 100) {
+            $erro = "Nome muito longo (máximo 100 caracteres).";
         } else {
-            $erro = "Erro ao preparar consulta SQL.";
+
+            $stmt = $mysqli->prepare("SELECT id_sala, nome_sala FROM sala WHERE codigo_sala = ?");
+            if ($stmt) {
+                $stmt->bind_param("s", $codigo);
+                $stmt->execute();
+                $result = $stmt->get_result();
+
+                if ($result && $result->num_rows === 1) {
+                    $sala = $result->fetch_assoc();
+                    $id_sala = $sala['id_sala'];
+
+                    $stmt_insert = $mysqli->prepare("INSERT INTO participante (nome_participante, fk_sala_atual) VALUES (?, ?)");
+                    if ($stmt_insert) {
+                        $stmt_insert->bind_param("si", $nome, $id_sala);
+                        if ($stmt_insert->execute()) {
+
+                            $id_participante = $stmt_insert->insert_id;
+
+                            session_regenerate_id(true);
+                            $_SESSION['codigo'] = $codigo;
+                            $_SESSION['nome'] = $nome;
+                            $_SESSION['id_participante'] = $id_participante;
+                            header("Location: pages/participante.php");
+                            exit;
+                        } else {
+                            $erro = "Erro ao inserir participante.";
+                        }
+                        $stmt_insert->close();
+                    }
+                } else {
+                    $erro = "Código de sala inválido.";
+                }
+
+                $stmt->close();
+            } else {
+                $erro = "Erro ao preparar consulta SQL.";
+            }
         }
     }
 }
 ?>
-<html>
+<html lang="pt-BR">
 
 <head>
     <meta charset="UTF-8">
@@ -78,22 +91,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="col-md-4"></div>
             <div class="col-md-4">
                 <div class="text-center">
-                    <img class="logo-black" src="../img/MI_legenda.png" class="rounded" alt="Logo">
+                    <img class="logo-black rounded" src="img/MI_legenda.png" alt="Logo do ME INSCREVO">
                 </div>
                 <div class="card shadow">
                     <div class="card-body">
                         <h2 class="text-center fw-bold">Entrar na Sala</h2><br>
                         <form action="" method="POST">
+                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
                             <?php if (!empty($erro)): ?>
                                 <div class="alert alert-danger" role="alert">
-                                    <?php echo $erro; ?>
+                                    <?php echo htmlspecialchars($erro, ENT_QUOTES, 'UTF-8'); ?>
                                 </div>
                             <?php endif; ?>
                             <label for="codigo" class="form-label">Código da Sala</label>
-                            <input name="codigo" type="text" class="form-control" id="codigo" required><br>
+                            <input name="codigo" type="text" class="form-control" id="codigo"
+                                value="<?php echo htmlspecialchars($codigo_valor, ENT_QUOTES, 'UTF-8'); ?>" required><br>
 
                             <label for="nome" class="form-label">Nome do Convidado</label>
-                            <input name="nome" type="text" class="form-control" id="nome" required><br>
+                            <input name="nome" type="text" class="form-control" id="nome"
+                                value="<?php echo htmlspecialchars($nome_valor, ENT_QUOTES, 'UTF-8'); ?>" required><br>
 
                             <div class="d-grid gap-2">
                                 <button class="btn btn-dark" type="submit">Entrar</button>

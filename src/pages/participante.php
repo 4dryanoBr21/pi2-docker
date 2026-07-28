@@ -1,5 +1,6 @@
 <?php
 require("../functions/conexao.php");
+require("../functions/csrf.php");
 
 session_start();
 
@@ -26,9 +27,11 @@ if ($result && $result->num_rows > 0) {
 }
 
 $stmt->close();
+
+$csrf = csrf_token();
 ?>
 
-<html>
+<html lang="pt-BR">
 
 <head>
     <meta charset="UTF-8">
@@ -50,15 +53,15 @@ $stmt->close();
             <div class="col-md-3"></div>
             <div class="col-md-6">
                 <div class="text-center">
-                    <img class="logo-black" src="../img/MI_legenda.png" class="rounded" alt="Logo">
+                    <img class="logo-black rounded" src="../img/MI_legenda.png" alt="Logo do ME INSCREVO">
                 </div>
                 <div class="card">
-                    <button type="button" class="btn-close" id="btnSair" aria-label="Close"></button>
+                    <button type="button" class="btn-close" id="btnSair" aria-label="Sair da sala"></button>
                     <div class="card-body">
                         <h2 class="text-center fw-bold"><?php echo htmlspecialchars($nome_sala); ?></h2>
 
                         <div id="painelEstado" class="text-center p-4 mb-3 rounded shadow-sm"
-                            style="background:#f5f5f5;">
+                            style="background:#f5f5f5;" aria-live="polite">
                             <div id="estadoAguardando">
                                 <p class="mb-1">Aguardando...</p>
                                 <p id="posicaoFila" class="text-muted">Levante a mão para entrar na fila.</p>
@@ -70,7 +73,7 @@ $stmt->close();
                         </div>
 
                         <div class="d-grid gap-2">
-                            <button id="mao" class="btn" type="button" style="font-size: 75px;">🤚</button>
+                            <button id="mao" class="btn" type="button" style="font-size: 75px;" aria-label="Levantar a mão">🤚</button>
                         </div>
                     </div>
                 </div>
@@ -82,6 +85,7 @@ $stmt->close();
     <script>
         const idSala = <?php echo $id_sala; ?>;
         const idParticipante = <?php echo $_SESSION['id_participante']; ?>;
+        const csrfToken = "<?php echo htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8'); ?>";
         let restanteLocal = null;
         let maoLevantada = false;
 
@@ -111,6 +115,7 @@ $stmt->close();
                     }
 
                     const souEu = estado.falando && estado.falando.id_participante === idParticipante;
+                    const mao = document.getElementById("mao");
 
                     if (souEu) {
                         document.getElementById("estadoAguardando").style.display = "none";
@@ -133,7 +138,8 @@ $stmt->close();
                         }
                     }
 
-                    document.getElementById("mao").textContent = maoLevantada || souEu ? "❌" : "🤚";
+                    mao.textContent = maoLevantada || souEu ? "❌" : "🤚";
+                    mao.setAttribute("aria-label", maoLevantada || souEu ? "Abaixar a mão" : "Levantar a mão");
                 })
                 .catch(err => console.error("Erro ao buscar estado da sala:", err));
         }
@@ -142,7 +148,7 @@ $stmt->close();
             fetch("../functions/salvar_hora.php", {
                 method: "POST",
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: "id_participante=" + idParticipante
+                body: "id_participante=" + idParticipante + "&csrf_token=" + encodeURIComponent(csrfToken)
             })
                 .then(res => res.text())
                 .then(() => atualizarEstado())
@@ -152,6 +158,7 @@ $stmt->close();
         document.getElementById("btnSair").addEventListener("click", function () {
             const formData = new FormData();
             formData.append("id_participante", idParticipante);
+            formData.append("csrf_token", csrfToken);
 
             fetch("../functions/sair_sala.php", { method: "POST", body: formData })
                 .then(res => res.text())

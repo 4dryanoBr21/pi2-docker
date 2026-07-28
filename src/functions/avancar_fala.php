@@ -1,12 +1,19 @@
 <?php
 session_start();
 include('conexao.php');
+require('csrf.php');
 
 header('Content-Type: application/json; charset=utf-8');
 
 if (!isset($_SESSION['id_criador']) || !isset($_SESSION['session_token'])) {
     http_response_code(403);
     echo json_encode(['erro' => 'não autenticado']);
+    exit;
+}
+
+if (!csrf_verify($_POST['csrf_token'] ?? null)) {
+    http_response_code(403);
+    echo json_encode(['erro' => 'token inválido']);
     exit;
 }
 

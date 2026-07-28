@@ -1,6 +1,7 @@
 <?php
 session_start();
 include("../functions/conexao.php");
+require("../functions/csrf.php");
 
 $erro = "";
 
@@ -9,80 +10,82 @@ $erro = "";
 $LIMITE_INATIVIDADE_MINUTOS = 1;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = trim($_POST['email'] ?? '');
-    $senha = trim($_POST['senha'] ?? '');
 
-    if (empty($email)) {
-        $erro = "Preencha seu email!";
-    } else if (empty($senha)) {
-        $erro = "Preencha sua senha!";
+    if (!csrf_verify($_POST['csrf_token'] ?? null)) {
+        $erro = "Sessão expirada. Recarregue a página e tente novamente.";
     } else {
-        $stmt = $mysqli->prepare("SELECT id_criador, nome_criador, senha, session_token, session_last_activity FROM criador WHERE email = ?");
-        if ($stmt) {
-            $stmt->bind_param("s", $email);
-            $stmt->execute();
-            $result = $stmt->get_result();
+        $email = trim($_POST['email'] ?? '');
+        $senha = trim($_POST['senha'] ?? '');
 
-            if ($result && $result->num_rows === 1) {
-                $usuario = $result->fetch_assoc();
+        if (empty($email)) {
+            $erro = "Preencha seu email!";
+        } else if (empty($senha)) {
+            $erro = "Preencha sua senha!";
+        } else {
+            $stmt = $mysqli->prepare("SELECT id_criador, nome_criador, senha, session_token, session_last_activity FROM criador WHERE email = ?");
+            if ($stmt) {
+                $stmt->bind_param("s", $email);
+                $stmt->execute();
+                $result = $stmt->get_result();
 
-                if (password_verify($senha, $usuario['senha'])) {
-                    $id_criador = $usuario['id_criador'];
+                if ($result && $result->num_rows === 1) {
+                    $usuario = $result->fetch_assoc();
 
-                    // verifica se já existe uma sessão ativa (token presente e atividade recente)
-                    $sessao_ativa = false;
+                    if (password_verify($senha, $usuario['senha'])) {
+                        $id_criador = $usuario['id_criador'];
 
-                    if (!empty($usuario['session_token']) && !empty($usuario['session_last_activity'])) {
-                        $ultima = new DateTime($usuario['session_last_activity']);
-                        $agora = new DateTime();
-                        $minutos_parado = ($agora->getTimestamp() - $ultima->getTimestamp()) / 60;
+                        // verifica se já existe uma sessão ativa (token presente e atividade recente)
+                        $sessao_ativa = false;
 
-                        if ($minutos_parado < $LIMITE_INATIVIDADE_MINUTOS) {
-                            $sessao_ativa = true;
+                        if (!empty($usuario['session_token']) && !empty($usuario['session_last_activity'])) {
+                            $ultima = new DateTime($usuario['session_last_activity']);
+                            $agora = new DateTime();
+                            $minutos_parado = ($agora->getTimestamp() - $ultima->getTimestamp()) / 60;
+
+                            if ($minutos_parado < $LIMITE_INATIVIDADE_MINUTOS) {
+                                $sessao_ativa = true;
+                            }
                         }
-                    }
 
-                    if ($sessao_ativa) {
-                        $erro = "Esta conta já está logada em outro dispositivo/aba. Saia de lá primeiro, ou aguarde alguns minutos de inatividade e tente novamente.";
-                    } else {
-                        // 1. Gera um Token único e aleatório para esta nova sessão do dispositivo
-                        $novo_token = bin2hex(random_bytes(32));
-
-                        // 2. Atualiza o banco de dados com o novo token e marca a atividade como agora
-                        $stmt_token = $mysqli->prepare("UPDATE criador SET session_token = ?, session_last_activity = NOW() WHERE id_criador = ?");
-                        if ($stmt_token) {
-                            $stmt_token->bind_param("si", $novo_token, $id_criador);
-                            $stmt_token->execute();
-                            $stmt_token->close();
-
-                            // 3. Regenera o ID de sessão (evita fixação de sessão) e grava os dados
-                            session_regenerate_id(true);
-                            $_SESSION['id_criador'] = $id_criador;
-                            $_SESSION['nome_criador'] = $usuario['nome_criador'];
-                            $_SESSION['session_token'] = $novo_token;
-
-                            $stmt->close();
-                            header("Location: criar.php");
-                            exit();
+                        if ($sessao_ativa) {
+                            $erro = "Esta conta já está logada em outro dispositivo/aba. Saia de lá primeiro, ou aguarde alguns minutos de inatividade e tente novamente.";
                         } else {
-                            $erro = "Erro interno ao registrar sessão.";
+                            $novo_token = bin2hex(random_bytes(32));
+
+                            $stmt_token = $mysqli->prepare("UPDATE criador SET session_token = ?, session_last_activity = NOW() WHERE id_criador = ?");
+                            if ($stmt_token) {
+                                $stmt_token->bind_param("si", $novo_token, $id_criador);
+                                $stmt_token->execute();
+                                $stmt_token->close();
+
+                                session_regenerate_id(true);
+                                $_SESSION['id_criador'] = $id_criador;
+                                $_SESSION['nome_criador'] = $usuario['nome_criador'];
+                                $_SESSION['session_token'] = $novo_token;
+
+                                $stmt->close();
+                                header("Location: criar.php");
+                                exit();
+                            } else {
+                                $erro = "Erro interno ao registrar sessão.";
+                            }
                         }
+                    } else {
+                        $erro = "Usuário ou senha incorretos!";
                     }
                 } else {
                     $erro = "Usuário ou senha incorretos!";
                 }
+                $stmt->close();
             } else {
-                $erro = "Usuário ou senha incorretos!";
+                $erro = "Erro interno no servidor de banco de dados.";
             }
-            $stmt->close();
-        } else {
-            $erro = "Erro interno no servidor de banco de dados.";
         }
     }
 }
 ?>
 
-<html>
+<html lang="pt-BR">
 
 <head>
     <meta charset="UTF-8">
@@ -104,13 +107,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="col-md-4"></div>
             <div class="col-md-4">
                 <div class="text-center">
-                    <img class="logo-black" src="../img/MI_legenda.png" class="rounded" alt="Logo">
+                    <img class="logo-black rounded" src="../img/MI_legenda.png" alt="Logo do ME INSCREVO">
                 </div>
                 <div class="card shadow">
-                    <button type="button" class="btn-close" id="btnSair" aria-label="Close"></button>
+                    <button type="button" class="btn-close" id="btnSair" aria-label="Sair sem entrar"></button>
                     <div class="card-body">
                         <h2 class="text-center fw-bold">Login</h2><br>
                         <form action="" method="POST">
+                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
                             <?php if (!empty($erro)): ?>
                                 <div class="alert alert-danger" role="alert">
                                     <?php echo htmlspecialchars($erro, ENT_QUOTES, 'UTF-8'); ?>

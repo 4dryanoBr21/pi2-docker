@@ -1,12 +1,11 @@
 <?php
 include('../functions/conexao.php');
+require('../functions/csrf.php');
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// mesma checagem de sessão usada em criar.php: token precisa bater com o
-// que está gravado no banco para este criador
 $autenticado = false;
 
 if (isset($_SESSION['id_criador']) && isset($_SESSION['session_token'])) {
@@ -34,8 +33,6 @@ if (!isset($_GET['id_sala'])) {
 
 $id_sala = intval($_GET['id_sala']);
 
-// garante que a sala pertence ao criador autenticado (evita que alguém
-// acesse/controle a sala de outra pessoa só sabendo o id_sala)
 $stmt_dono = $mysqli->prepare("SELECT 1 FROM criador WHERE id_criador = ? AND fk_sala_criada = ?");
 $stmt_dono->bind_param("ii", $_SESSION['id_criador'], $id_sala);
 $stmt_dono->execute();
@@ -46,28 +43,36 @@ if (!$eh_dono) {
     die("Você não tem permissão para acessar esta sala. <a href='criar.php'>Voltar</a>");
 }
 
-// registra que esta sessão está ativa agora
 $stmt_touch = $mysqli->prepare("UPDATE criador SET session_last_activity = NOW() WHERE id_criador = ?");
 $stmt_touch->bind_param("i", $_SESSION['id_criador']);
 $stmt_touch->execute();
 $stmt_touch->close();
 
-$mysqli->query("UPDATE sala SET data_inicio = NOW() WHERE id_sala = $id_sala AND data_inicio IS NULL");
+// data_inicio: prepared statement (antes era SQL concatenado — funcionava
+// só porque intval() já sanitizava, mas é melhor não depender só disso)
+$stmt_inicio = $mysqli->prepare("UPDATE sala SET data_inicio = NOW() WHERE id_sala = ? AND data_inicio IS NULL");
+$stmt_inicio->bind_param("i", $id_sala);
+$stmt_inicio->execute();
+$stmt_inicio->close();
 
-$sql = "SELECT * FROM sala WHERE id_sala = $id_sala";
-$result = $mysqli->query($sql);
+$stmt_sala = $mysqli->prepare("SELECT * FROM sala WHERE id_sala = ?");
+$stmt_sala->bind_param("i", $id_sala);
+$stmt_sala->execute();
+$row = $stmt_sala->get_result()->fetch_assoc();
+$stmt_sala->close();
 
-if ($result->num_rows > 0) {
-  $row = $result->fetch_assoc();
+if ($row) {
   $nome_sala = htmlspecialchars($row['nome_sala']);
   $tempo_fala = htmlspecialchars($row['tempo_de_fala']);
   $data_inicio_js = htmlspecialchars($row['data_inicio']);
 } else {
   die("Sala não encontrada. <a href='criar.php'>Voltar</a>");
 }
+
+$csrf = csrf_token();
 ?>
 
-<html>
+<html lang="pt-BR">
 
 <head>
   <meta charset="UTF-8">
@@ -90,10 +95,10 @@ if ($result->num_rows > 0) {
       <div class="col-md-3"></div>
       <div class="col-md-6">
         <div class="text-center">
-          <img class="logo-black" src="../img/MI_legenda.png" class="rounded" alt="Logo">
+          <img class="logo-black rounded" src="../img/MI_legenda.png" alt="Logo do ME INSCREVO">
         </div>
         <div class="card">
-          <button type="button" class="btn-close" aria-label="Close"></button>
+          <button type="button" class="btn-close" aria-label="Encerrar sala e apagar todos os participantes"></button>
           <div class="card-body">
             <h2 class="text-center fw-bold"><?php echo $nome_sala; ?></h2>
             <p class="text-center text-muted mb-3">
@@ -101,7 +106,7 @@ if ($result->num_rows > 0) {
               Tempo de fala por participante: <?php echo $tempo_fala; ?>
             </p>
 
-            <div id="painelFalando" class="text-center p-4 mb-3 rounded shadow-sm" style="background:#f5f5f5;">
+            <div id="painelFalando" class="text-center p-4 mb-3 rounded shadow-sm" style="background:#f5f5f5;" aria-live="polite">
               <div id="semFalante">Nenhum participante falando no momento.</div>
               <div id="comFalante" style="display:none;">
                 <h4 class="fw-bold mb-1" id="nomeFalante"></h4>
@@ -115,7 +120,7 @@ if ($result->num_rows > 0) {
 
             <h6 class="fw-bold">Fila de espera</h6>
             <div id="listaFila" class="d-grid gap-2 overflow-auto shadow p-3 mb-2 bg-body-tertiary rounded"
-              style="height: 160px;">
+              style="height: 160px;" aria-live="polite">
             </div>
           </div>
         </div>
@@ -126,11 +131,17 @@ if ($result->num_rows > 0) {
 
   <script>
     const idSala = <?php echo $id_sala; ?>;
+    const csrfToken = "<?php echo htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8'); ?>";
     const dataInicio = new Date("<?php echo $data_inicio_js; ?>Z".replace(" ", "T"));
 
     document.querySelector(".btn-close").addEventListener("click", function () {
+      if (!confirm("Tem certeza que deseja encerrar a sala? Isso vai apagar a sala e remover todos os participantes — não pode ser desfeito.")) {
+        return;
+      }
+
       const form = new FormData();
       form.append("id_sala", idSala);
+      form.append("csrf_token", csrfToken);
 
       fetch("../functions/fechar_sala.php", { method: "POST", body: form })
         .then(res => res.text())
@@ -165,6 +176,7 @@ if ($result->num_rows > 0) {
 
       const form = new FormData();
       form.append("id_sala", idSala);
+      form.append("csrf_token", csrfToken);
 
       fetch("../functions/avancar_fala.php", { method: "POST", body: form })
         .then(res => res.json())

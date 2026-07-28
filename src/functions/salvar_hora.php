@@ -1,9 +1,16 @@
 <?php
 include('conexao.php');
+require('csrf.php');
 session_start();
 
 if (!isset($_POST['id_participante'])) {
     die("ID inválido");
+}
+
+if (!csrf_verify($_POST['csrf_token'] ?? null)) {
+    http_response_code(403);
+    echo "erro";
+    exit;
 }
 
 $id_participante = intval($_POST['id_participante']);
