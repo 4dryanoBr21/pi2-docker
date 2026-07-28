@@ -91,7 +91,6 @@ if (isset($_POST['submit'])) {
                 $erro = "Erro ao preparar consulta de verificação.";
             }
 
-            // também garante que o código da sala não colide com outra já existente
             if (empty($erro)) {
                 $stmt_check_codigo = $mysqli->prepare("SELECT id_sala FROM sala WHERE codigo_sala = ?");
                 if ($stmt_check_codigo) {

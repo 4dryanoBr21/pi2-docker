@@ -18,9 +18,6 @@ $stmt->close();
 $valido = $row && hash_equals((string) $row['session_token'], (string) $_SESSION['session_token']);
 
 if ($valido) {
-    // renova a marca de atividade — enquanto a página do criador estiver
-    // aberta e este polling rodando, a sessão nunca fica "parada" o
-    // suficiente para liberar um login em outro lugar
     $stmt2 = $mysqli->prepare("UPDATE criador SET session_last_activity = NOW() WHERE id_criador = ?");
     $stmt2->bind_param("i", $_SESSION['id_criador']);
     $stmt2->execute();

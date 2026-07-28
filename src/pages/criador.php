@@ -48,8 +48,6 @@ $stmt_touch->bind_param("i", $_SESSION['id_criador']);
 $stmt_touch->execute();
 $stmt_touch->close();
 
-// data_inicio: prepared statement (antes era SQL concatenado — funcionava
-// só porque intval() já sanitizava, mas é melhor não depender só disso)
 $stmt_inicio = $mysqli->prepare("UPDATE sala SET data_inicio = NOW() WHERE id_sala = ? AND data_inicio IS NULL");
 $stmt_inicio->bind_param("i", $id_sala);
 $stmt_inicio->execute();

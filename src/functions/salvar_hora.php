@@ -15,7 +15,6 @@ if (!csrf_verify($_POST['csrf_token'] ?? null)) {
 
 $id_participante = intval($_POST['id_participante']);
 
-// só permite que o participante mexa no próprio registro, nunca no de outra pessoa
 if (!isset($_SESSION['id_participante']) || (int) $_SESSION['id_participante'] !== $id_participante) {
     http_response_code(403);
     echo "erro";

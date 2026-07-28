@@ -16,14 +16,12 @@ if (!csrf_verify($_POST['csrf_token'] ?? null)) {
 
 $id_participante = intval($_POST['id_participante']);
 
-// só permite que o participante mexa no próprio registro, nunca no de outra pessoa
 if (!isset($_SESSION['id_participante']) || (int) $_SESSION['id_participante'] !== $id_participante) {
     http_response_code(403);
     echo "erro";
     exit;
 }
 
-// se o participante que está saindo era quem estava com a palavra, libera a vez
 $stmt0 = $mysqli->prepare("
     UPDATE sala
     SET fk_participante_falando = NULL, fala_inicio = NULL
@@ -33,7 +31,6 @@ $stmt0->bind_param("i", $id_participante);
 $stmt0->execute();
 $stmt0->close();
 
-// apaga somente o registro deste participante — a sala e os demais continuam
 $stmt1 = $mysqli->prepare("DELETE FROM participante WHERE id_participante = ?");
 $stmt1->bind_param("i", $id_participante);
 $stmt1->execute();

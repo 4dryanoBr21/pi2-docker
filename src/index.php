@@ -13,9 +13,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!csrf_verify($_POST['csrf_token'] ?? null)) {
         $erro = "Sessão expirada. Recarregue a página e tente novamente.";
     } else {
-        // não escapamos HTML aqui — isso é feito só na hora de EXIBIR o dado,
-        // nunca antes de gravar no banco (evita corromper nomes/códigos com
-        // acento, & ou aspas, e evita descasar comparação de código de sala)
         $codigo = trim($_POST['codigo'] ?? '');
         $nome = trim($_POST['nome'] ?? '');
         $codigo_valor = $codigo;

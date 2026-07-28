@@ -22,7 +22,6 @@ $sala = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
 if (!$sala) {
-    // sala não existe = sala foi fechada/apagada
     http_response_code(404);
     echo json_encode(['erro' => 'sala não encontrada']);
     exit;

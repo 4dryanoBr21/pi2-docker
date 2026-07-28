@@ -17,7 +17,6 @@ if (!csrf_verify($_POST['csrf_token'] ?? null)) {
     exit;
 }
 
-// confirma que o token desta sessão ainda é o mais recente
 $stmt_token = $mysqli->prepare("SELECT session_token FROM criador WHERE id_criador = ?");
 $stmt_token->bind_param("i", $_SESSION['id_criador']);
 $stmt_token->execute();
@@ -38,7 +37,6 @@ if (!isset($_POST['id_sala'])) {
 
 $id_sala = intval($_POST['id_sala']);
 
-// confirma que a sala pertence ao criador da sessão atual
 $stmt_dono = $mysqli->prepare("SELECT 1 FROM criador WHERE id_criador = ? AND fk_sala_criada = ?");
 $stmt_dono->bind_param("ii", $_SESSION['id_criador'], $id_sala);
 $stmt_dono->execute();
@@ -51,7 +49,6 @@ if (!$eh_dono) {
     exit;
 }
 
-// renova a marca de atividade desta sessão
 $stmt_touch = $mysqli->prepare("UPDATE criador SET session_last_activity = NOW() WHERE id_criador = ?");
 $stmt_touch->bind_param("i", $_SESSION['id_criador']);
 $stmt_touch->execute();
@@ -88,7 +85,6 @@ $stmt2->bind_param("ii", $id_participante, $id_sala);
 $stmt2->execute();
 $stmt2->close();
 
-// quem começa a falar sai da fila de "mão levantada"
 $stmt3 = $mysqli->prepare("UPDATE participante SET data_hora_solicitacao = NULL WHERE id_participante = ?");
 $stmt3->bind_param("i", $id_participante);
 $stmt3->execute();
