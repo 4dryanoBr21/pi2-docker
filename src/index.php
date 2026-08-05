@@ -2,8 +2,6 @@
 require('functions/conexao.php');
 require('functions/csrf.php');
 
-session_start();
-
 $erro = "";
 $codigo_valor = "";
 $nome_valor = "";

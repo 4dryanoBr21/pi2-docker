@@ -111,11 +111,8 @@ if (isset($_POST['submit'])) {
                                 value="<?php echo htmlspecialchars($email, ENT_QUOTES, 'UTF-8'); ?>" aria-describedby="emailHelp" required><br>
 
                             <label for="exampleInputPassword1" class="form-label">Password</label>
-                            <div class="input-group">
-                                <input name="senha" type="password" class="form-control" id="exampleInputPassword1"
-                                    minlength="8" required aria-describedby="senhaAjuda">
-                                <button class="btn btn-outline-secondary" type="button" id="gerarSenha">Gerar</button>
-                            </div>
+                            <input name="senha" type="password" class="form-control" id="exampleInputPassword1"
+                                minlength="8" required aria-describedby="senhaAjuda">
                             <div id="senhaAjuda" class="form-text">Mínimo de 8 caracteres.</div><br>
 
                             <div class="d-grid gap-2">
@@ -133,22 +130,6 @@ if (isset($_POST['submit'])) {
 <script>
     document.getElementById("btnSair").addEventListener("click", () => {
         window.open("../functions/logout.php", "_self");
-    });
-
-    document.getElementById("gerarSenha").addEventListener("click", () => {
-        const caracteres = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*";
-        let senha = "";
-        for (let i = 0; i < 12; i++) {
-            senha += caracteres[Math.floor(Math.random() * caracteres.length)];
-        }
-
-        const campo = document.getElementById("exampleInputPassword1");
-        campo.type = "text";
-        campo.value = senha;
-
-        setTimeout(() => {
-            campo.type = "password";
-        }, 1500);
     });
 </script>
 

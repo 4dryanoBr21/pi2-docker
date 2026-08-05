@@ -87,7 +87,6 @@ $csrf = csrf_token();
 </head>
 
 <body>
-  <a href="../functions/logout.php" class="btn btn-sm btn-outline-dark" style="position:absolute; top:16px; right:16px;">Sair</a>
   <div class="container">
     <div class="row">
       <div class="col-md-3"></div>
@@ -97,6 +96,7 @@ $csrf = csrf_token();
         </div>
         <div class="card">
           <button type="button" class="btn-close" aria-label="Encerrar sala e apagar todos os participantes"></button>
+          <a href="../functions/logout.php" class="btn btn-sm btn-outline-dark" style="position:absolute; top:16px; right:16px;">Sair</a>
           <div class="card-body">
             <h2 class="text-center fw-bold"><?php echo $nome_sala; ?></h2>
             <p class="text-center text-muted mb-3">

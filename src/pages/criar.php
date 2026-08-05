@@ -180,9 +180,12 @@ if (isset($_POST['submit'])) {
                                 value="<?php echo htmlspecialchars($nome_sala, ENT_QUOTES, 'UTF-8'); ?>" required /><br>
 
                             <label for="codigo" class="form-label">Código da Sala</label>
-                            <input name="codigo" type="text" class="form-control" id="codigo"
-                                value="<?php echo htmlspecialchars($codigo_sala, ENT_QUOTES, 'UTF-8'); ?>"
-                                required /><br>
+                            <div class="input-group">
+                                <input name="codigo" type="text" class="form-control" id="codigo"
+                                    value="<?php echo htmlspecialchars($codigo_sala, ENT_QUOTES, 'UTF-8'); ?>"
+                                    required />
+                                <button class="btn btn-outline-secondary" type="button" id="copiarCodigo">Copiar código</button>
+                            </div><br>
 
                             <label for="tempo" class="form-label">Tempo de fala dos participantes
                                 (horas:minutos:segundos)</label>
@@ -203,6 +206,23 @@ if (isset($_POST['submit'])) {
     <script>
         document.getElementById("btnSair").addEventListener("click", () => {
             window.open("../functions/logout.php", "_self");
+        });
+
+        document.getElementById("copiarCodigo").addEventListener("click", () => {
+            const campo = document.getElementById("codigo");
+            const botao = document.getElementById("copiarCodigo");
+
+            navigator.clipboard.writeText(campo.value).then(() => {
+                const textoOriginal = botao.textContent;
+                botao.textContent = "Copiado!";
+                setTimeout(() => {
+                    botao.textContent = textoOriginal;
+                }, 1500);
+            }).catch(() => {
+                // fallback para navegadores/contextos sem permissão de clipboard
+                campo.select();
+                document.execCommand("copy");
+            });
         });
     </script>
 </body>

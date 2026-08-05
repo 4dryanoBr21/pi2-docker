@@ -5,6 +5,8 @@ require("../functions/csrf.php");
 
 $erro = "";
 
+// tempo, em minutos, que uma sessão precisa ficar sem atividade para ser
+// considerada "expirada" e liberar um novo login em outro lugar
 $LIMITE_INATIVIDADE_MINUTOS = 1;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -12,17 +14,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!csrf_verify($_POST['csrf_token'] ?? null)) {
         $erro = "Sessão expirada. Recarregue a página e tente novamente.";
     } else {
-        $email = trim($_POST['email'] ?? '');
+        $identificador = trim($_POST['identificador'] ?? '');
         $senha = trim($_POST['senha'] ?? '');
 
-        if (empty($email)) {
-            $erro = "Preencha seu email!";
+        if (empty($identificador)) {
+            $erro = "Preencha seu e-mail ou nome de usuário!";
         } else if (empty($senha)) {
             $erro = "Preencha sua senha!";
         } else {
-            $stmt = $mysqli->prepare("SELECT id_criador, nome_criador, senha, session_token, session_last_activity FROM criador WHERE email = ?");
+            // autentica tanto por e-mail quanto por nome de usuário
+            $stmt = $mysqli->prepare("SELECT id_criador, nome_criador, senha, session_token, session_last_activity FROM criador WHERE email = ? OR nome_criador = ?");
             if ($stmt) {
-                $stmt->bind_param("s", $email);
+                $stmt->bind_param("ss", $identificador, $identificador);
                 $stmt->execute();
                 $result = $stmt->get_result();
 
@@ -117,9 +120,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <?php echo htmlspecialchars($erro, ENT_QUOTES, 'UTF-8'); ?>
                                 </div>
                             <?php endif; ?>
-                            <label for="email" class="form-label">Nome de usuário ou e-mail</label>
-                            <input name="email" type="email" class="form-control" id="email"
-                                value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email'], ENT_QUOTES, 'UTF-8') : ''; ?>"
+                            <label for="identificador" class="form-label">Nome de usuário ou e-mail</label>
+                            <input name="identificador" type="text" class="form-control" id="identificador"
+                                value="<?php echo isset($_POST['identificador']) ? htmlspecialchars($_POST['identificador'], ENT_QUOTES, 'UTF-8') : ''; ?>"
                                 required><br>
 
                             <label for="password" class="form-label">Senha</label>

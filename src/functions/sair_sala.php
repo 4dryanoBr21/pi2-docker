@@ -1,7 +1,6 @@
 <?php
 require("conexao.php");
 require("csrf.php");
-session_start();
 
 if (!isset($_POST['id_participante'])) {
     echo "erro";
