@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once(__DIR__ . '/conexao.php');
+require_once(__DIR__ . '/sala_helpers.php');
 
 // se havia um criador logado, invalida o token/atividade e apaga a sala
 // dele, se tiver uma aberta (mesmo procedimento do botão "Encerrar sala")
@@ -16,29 +17,7 @@ if (isset($_SESSION['id_criador'])) {
     $id_sala = $row_sala['fk_sala_criada'] ?? null;
 
     if ($id_sala) {
-        // remove a referência de "quem está falando" antes de apagar os participantes
-        $stmt0 = $mysqli->prepare("UPDATE sala SET fk_participante_falando = NULL WHERE id_sala = ?");
-        $stmt0->bind_param("i", $id_sala);
-        $stmt0->execute();
-        $stmt0->close();
-
-        // desvincula o criador da sala
-        $stmt1 = $mysqli->prepare("UPDATE criador SET fk_sala_criada = NULL WHERE id_criador = ?");
-        $stmt1->bind_param("i", $id_criador);
-        $stmt1->execute();
-        $stmt1->close();
-
-        // apaga todos os participantes da sala
-        $stmt2 = $mysqli->prepare("DELETE FROM participante WHERE fk_sala_atual = ?");
-        $stmt2->bind_param("i", $id_sala);
-        $stmt2->execute();
-        $stmt2->close();
-
-        // apaga a sala em si
-        $stmt3 = $mysqli->prepare("DELETE FROM sala WHERE id_sala = ?");
-        $stmt3->bind_param("i", $id_sala);
-        $stmt3->execute();
-        $stmt3->close();
+        apagar_sala($mysqli, (int) $id_sala);
     }
 
     $stmt_logout = $mysqli->prepare("UPDATE criador SET session_token = NULL, session_last_activity = NULL WHERE id_criador = ?");
@@ -48,7 +27,6 @@ if (isset($_SESSION['id_criador'])) {
 }
 
 // se havia um participante ativo em uma sala, remove o registro dele do banco
-// (mesmo procedimento do sair_sala.php, para não deixar dado órfão)
 if (isset($_SESSION['id_participante'])) {
     $id_participante = intval($_SESSION['id_participante']);
 

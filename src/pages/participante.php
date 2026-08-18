@@ -70,8 +70,13 @@ $csrf = csrf_token();
                             </div>
                         </div>
 
-                        <div class="d-grid gap-2">
+                        <div class="d-grid gap-2 mb-3">
                             <button id="mao" class="btn" type="button" style="font-size: 75px;" aria-label="Levantar a mão">🤚</button>
+                        </div>
+
+                        <h6 class="fw-bold">Participantes presentes</h6>
+                        <div id="listaPresentes" class="d-grid gap-2 overflow-auto shadow p-3 mb-2 bg-body-tertiary rounded"
+                            style="height: 160px;" aria-live="polite">
                         </div>
                     </div>
                 </div>
@@ -86,6 +91,7 @@ $csrf = csrf_token();
         const csrfToken = "<?php echo htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8'); ?>";
         let restanteLocal = null;
         let maoLevantada = false;
+        let speakerAtualId = null;
 
         function verificarSala() {
             fetch("../functions/verifica_sala.php?id_sala=" + idSala)
@@ -118,11 +124,16 @@ $csrf = csrf_token();
                     if (souEu) {
                         document.getElementById("estadoAguardando").style.display = "none";
                         document.getElementById("estadoFalando").style.display = "block";
-                        restanteLocal = estado.falando.restante_segundos;
+
+                        if (speakerAtualId !== estado.falando.id_participante) {
+                            speakerAtualId = estado.falando.id_participante;
+                            restanteLocal = estado.falando.restante_segundos;
+                        }
                         document.getElementById("contadorFala").textContent = formatarMMSS(restanteLocal);
                     } else {
                         document.getElementById("estadoAguardando").style.display = "block";
                         document.getElementById("estadoFalando").style.display = "none";
+                        speakerAtualId = null;
                         restanteLocal = null;
 
                         const posicao = estado.fila.findIndex(p => p.id_participante === idParticipante);
@@ -138,6 +149,28 @@ $csrf = csrf_token();
 
                     mao.textContent = maoLevantada || souEu ? "❌" : "🤚";
                     mao.setAttribute("aria-label", maoLevantada || souEu ? "Abaixar a mão" : "Levantar a mão");
+
+                    const listaPresentes = document.getElementById("listaPresentes");
+                    listaPresentes.innerHTML = "";
+                    if (estado.presentes.length === 0) {
+                        const vazio = document.createElement("p");
+                        vazio.textContent = "Nenhum participante na sala ainda.";
+                        listaPresentes.appendChild(vazio);
+                    } else {
+                        const idsNaFila = new Set(estado.fila.map(p => p.id_participante));
+                        estado.presentes.forEach(p => {
+                            const item = document.createElement("p");
+                            let marcador = "";
+                            if (estado.falando && estado.falando.id_participante === p.id_participante) {
+                                marcador = " 🎙️";
+                            } else if (idsNaFila.has(p.id_participante)) {
+                                marcador = " 🤚";
+                            }
+                            const voce = p.id_participante === idParticipante ? " (você)" : "";
+                            item.textContent = p.nome + voce + marcador;
+                            listaPresentes.appendChild(item);
+                        });
+                    }
                 })
                 .catch(err => console.error("Erro ao buscar estado da sala:", err));
         }

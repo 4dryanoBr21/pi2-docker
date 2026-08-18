@@ -1,5 +1,6 @@
 <?php
 include('conexao.php');
+require('sala_helpers.php');
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -11,8 +12,18 @@ if (!isset($_GET['id_sala'])) {
 
 $id_sala = intval($_GET['id_sala']);
 
+if (!limpar_sala_se_abandonada($mysqli, $id_sala)) {
+    http_response_code(404);
+    echo json_encode(['erro' => 'sala não encontrada']);
+    exit;
+}
+
+// TIMESTAMPDIFF roda dentro do próprio MySQL: fala_inicio e "agora" vêm da
+// mesma fonte de tempo, então não há risco de descompasso de fuso/relógio
+// entre o container do PHP e o do banco (causa do bug do cronômetro).
 $stmt = $mysqli->prepare("
-    SELECT fk_participante_falando, fala_inicio, tempo_de_fala, data_inicio
+    SELECT fk_participante_falando, tempo_de_fala, data_inicio,
+           TIMESTAMPDIFF(SECOND, fala_inicio, NOW()) AS decorrido_fala
     FROM sala
     WHERE id_sala = ?
 ");
@@ -40,9 +51,7 @@ if ($sala['fk_participante_falando']) {
     $stmt->close();
 
     if ($p) {
-        $inicio = new DateTime($sala['fala_inicio']);
-        $agora = new DateTime();
-        $decorrido = $agora->getTimestamp() - $inicio->getTimestamp();
+        $decorrido = max(0, (int) $sala['decorrido_fala']);
         $restante = max(0, $duracao_segundos - $decorrido);
 
         $falando = [
@@ -73,9 +82,27 @@ while ($row = $result->fetch_assoc()) {
 }
 $stmt->close();
 
+// lista de TODOS os participantes presentes na sala (independente de fila/fala)
+$stmt = $mysqli->prepare("
+    SELECT id_participante, nome_participante
+    FROM participante
+    WHERE fk_sala_atual = ?
+    ORDER BY id_participante ASC
+");
+$stmt->bind_param("i", $id_sala);
+$stmt->execute();
+$result = $stmt->get_result();
+
+$presentes = [];
+while ($row = $result->fetch_assoc()) {
+    $presentes[] = ['id_participante' => (int) $row['id_participante'], 'nome' => $row['nome_participante']];
+}
+$stmt->close();
+
 echo json_encode([
     'duracao_segundos' => $duracao_segundos,
     'data_inicio' => $sala['data_inicio'],
     'falando' => $falando,
     'fila' => $fila,
+    'presentes' => $presentes,
 ]);

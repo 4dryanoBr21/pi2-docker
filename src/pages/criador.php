@@ -61,6 +61,7 @@ $stmt_sala->close();
 
 if ($row) {
   $nome_sala = htmlspecialchars($row['nome_sala']);
+  $codigo_sala = htmlspecialchars($row['codigo_sala']);
   $tempo_fala = htmlspecialchars($row['tempo_de_fala']);
   $data_inicio_js = htmlspecialchars($row['data_inicio']);
 } else {
@@ -87,6 +88,7 @@ $csrf = csrf_token();
 </head>
 
 <body>
+  <a href="../functions/logout.php" class="btn btn-sm btn-outline-dark" style="position:absolute; top:16px; right:16px;">Sair</a>
   <div class="container">
     <div class="row">
       <div class="col-md-3"></div>
@@ -96,11 +98,13 @@ $csrf = csrf_token();
         </div>
         <div class="card">
           <button type="button" class="btn-close" aria-label="Encerrar sala e apagar todos os participantes"></button>
-          <a href="../functions/logout.php" class="btn btn-sm btn-outline-dark" style="position:absolute; top:16px; right:16px;">Sair</a>
           <div class="card-body">
-            <h2 class="text-center fw-bold"><?php echo $nome_sala; ?></h2>
+            <h2 class="text-center fw-bold">
+              <?php echo $nome_sala; ?>
+              <span class="fs-6 text-muted d-block">Código: <?php echo $codigo_sala; ?></span>
+            </h2>
             <p class="text-center text-muted mb-3">
-              Tempo de reunião: <span id="tempoReuniao">00:00:00</span> &middot;
+              Tempo de reunião: <span id="tempoReuniao">00:00</span> &middot;
               Tempo de fala por participante: <?php echo $tempo_fala; ?>
             </p>
 
@@ -116,8 +120,8 @@ $csrf = csrf_token();
               <button id="btnProximo" class="btn btn-dark" type="button">Iniciar fala do próximo</button>
             </div>
 
-            <h6 class="fw-bold">Fila de espera</h6>
-            <div id="listaFila" class="d-grid gap-2 overflow-auto shadow p-3 mb-2 bg-body-tertiary rounded"
+            <h6 class="fw-bold">Participantes presentes</h6>
+            <div id="listaPresentes" class="d-grid gap-2 overflow-auto shadow p-3 mb-2 bg-body-tertiary rounded"
               style="height: 160px;" aria-live="polite">
             </div>
           </div>
@@ -153,20 +157,15 @@ $csrf = csrf_token();
     });
 
     function formatarMMSS(totalSegundos) {
-      const m = Math.floor(totalSegundos / 60).toString().padStart(2, "0");
-      const s = Math.floor(totalSegundos % 60).toString().padStart(2, "0");
+      const capado = Math.min(totalSegundos, 59 * 60 + 59); // no máximo 59:59
+      const m = Math.floor(capado / 60).toString().padStart(2, "0");
+      const s = Math.floor(capado % 60).toString().padStart(2, "0");
       return `${m}:${s}`;
-    }
-
-    function formatarHHMMSS(totalSegundos) {
-      const h = Math.floor(totalSegundos / 3600).toString().padStart(2, "0");
-      const m = Math.floor((totalSegundos % 3600) / 60).toString().padStart(2, "0");
-      const s = Math.floor(totalSegundos % 60).toString().padStart(2, "0");
-      return `${h}:${m}:${s}`;
     }
 
     let restanteLocal = null;
     let avancandoAutomaticamente = false;
+    let speakerAtualId = null;
 
     function avancarFala() {
       if (avancandoAutomaticamente) return;
@@ -200,27 +199,42 @@ $csrf = csrf_token();
             document.getElementById("semFalante").style.display = "none";
             document.getElementById("comFalante").style.display = "block";
             document.getElementById("nomeFalante").textContent = estado.falando.nome;
-            restanteLocal = estado.falando.restante_segundos;
+
+            // só resincroniza do servidor quando o orador muda (ou na primeira
+            // vez) — evita que um poll periódico "reinicie" visualmente o
+            // cronômetro de quem já está contando corretamente no cliente
+            if (speakerAtualId !== estado.falando.id_participante) {
+              speakerAtualId = estado.falando.id_participante;
+              restanteLocal = estado.falando.restante_segundos;
+            }
             document.getElementById("contadorFala").textContent = formatarMMSS(restanteLocal);
             document.getElementById("btnProximo").textContent = "Passar a vez";
           } else {
             document.getElementById("semFalante").style.display = "block";
             document.getElementById("comFalante").style.display = "none";
+            speakerAtualId = null;
             restanteLocal = null;
             document.getElementById("btnProximo").textContent = "Iniciar fala do próximo";
           }
 
-          const listaFila = document.getElementById("listaFila");
-          listaFila.innerHTML = "";
-          if (estado.fila.length === 0) {
+          const listaPresentes = document.getElementById("listaPresentes");
+          listaPresentes.innerHTML = "";
+          if (estado.presentes.length === 0) {
             const vazio = document.createElement("p");
-            vazio.textContent = "Ninguém na fila.";
-            listaFila.appendChild(vazio);
+            vazio.textContent = "Nenhum participante na sala ainda.";
+            listaPresentes.appendChild(vazio);
           } else {
-            estado.fila.forEach((p, i) => {
+            const idsNaFila = new Set(estado.fila.map(p => p.id_participante));
+            estado.presentes.forEach(p => {
               const item = document.createElement("p");
-              item.textContent = `${i + 1}. ${p.nome}`;
-              listaFila.appendChild(item);
+              let marcador = "";
+              if (estado.falando && estado.falando.id_participante === p.id_participante) {
+                marcador = " 🎙️";
+              } else if (idsNaFila.has(p.id_participante)) {
+                marcador = " 🤚";
+              }
+              item.textContent = p.nome + marcador;
+              listaPresentes.appendChild(item);
             });
           }
         })
@@ -229,7 +243,7 @@ $csrf = csrf_token();
 
     setInterval(() => {
       const decorrido = Math.floor((new Date() - dataInicio) / 1000);
-      document.getElementById("tempoReuniao").textContent = formatarHHMMSS(Math.max(0, decorrido));
+      document.getElementById("tempoReuniao").textContent = formatarMMSS(Math.max(0, decorrido));
 
       if (restanteLocal !== null) {
         restanteLocal = Math.max(0, restanteLocal - 1);

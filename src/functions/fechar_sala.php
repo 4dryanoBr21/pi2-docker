@@ -2,6 +2,7 @@
 session_start();
 require("conexao.php");
 require("csrf.php");
+require("sala_helpers.php");
 
 if (!isset($_SESSION['id_criador']) || !isset($_SESSION['session_token'])) {
     http_response_code(403);
@@ -46,25 +47,7 @@ if (!$eh_dono) {
     exit;
 }
 
-$stmt0 = $mysqli->prepare("UPDATE sala SET fk_participante_falando = NULL WHERE id_sala = ?");
-$stmt0->bind_param("i", $id_sala);
-$stmt0->execute();
-$stmt0->close();
-
-$stmt1 = $mysqli->prepare("UPDATE criador SET fk_sala_criada = NULL WHERE fk_sala_criada = ?");
-$stmt1->bind_param("i", $id_sala);
-$stmt1->execute();
-$stmt1->close();
-
-$stmt2 = $mysqli->prepare("DELETE FROM participante WHERE fk_sala_atual = ?");
-$stmt2->bind_param("i", $id_sala);
-$stmt2->execute();
-$stmt2->close();
-
-$stmt3 = $mysqli->prepare("DELETE FROM sala WHERE id_sala = ?");
-$stmt3->bind_param("i", $id_sala);
-$stmt3->execute();
-$stmt3->close();
+apagar_sala($mysqli, $id_sala);
 
 echo "ok";
 ?>
