@@ -40,7 +40,7 @@ if ($valorAtual === null) {
 
 $stmt2 = $mysqli->prepare("
     UPDATE participante 
-    SET data_hora_solicitacao = ?
+    SET data_hora_solicitacao = ?, ultima_atividade = NOW()
     WHERE id_participante = ?
 ");
 

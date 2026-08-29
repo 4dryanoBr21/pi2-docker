@@ -2,6 +2,10 @@
 include('conexao.php');
 require('sala_helpers.php');
 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 header('Content-Type: application/json; charset=utf-8');
 
 if (!isset($_GET['id_sala'])) {
@@ -12,15 +16,46 @@ if (!isset($_GET['id_sala'])) {
 
 $id_sala = intval($_GET['id_sala']);
 
+// se quem está consultando é um participante logado, isso já é sinal de que
+// ele está ativo — renova a marca de atividade dele
+if (isset($_SESSION['id_participante'])) {
+    $id_participante_ativo = intval($_SESSION['id_participante']);
+
+    // checa existência com SELECT, não com affected_rows do UPDATE: o
+    // affected_rows de um UPDATE só conta linhas que realmente mudaram de
+    // valor — se duas renovações caírem no mesmo segundo (NOW() tem
+    // precisão de segundo), o valor não muda e affected_rows vem 0 mesmo
+    // com o participante existindo, expulsando-o por engano.
+    $stmt_check = $mysqli->prepare("SELECT 1 FROM participante WHERE id_participante = ?");
+    $stmt_check->bind_param("i", $id_participante_ativo);
+    $stmt_check->execute();
+    $ainda_existe = $stmt_check->get_result()->num_rows > 0;
+    $stmt_check->close();
+
+    if (!$ainda_existe) {
+        http_response_code(404);
+        echo json_encode(['erro' => 'participante removido da sala']);
+        exit;
+    }
+
+    $stmt_touch = $mysqli->prepare("UPDATE participante SET ultima_atividade = NOW() WHERE id_participante = ?");
+    $stmt_touch->bind_param("i", $id_participante_ativo);
+    $stmt_touch->execute();
+    $stmt_touch->close();
+}
+
 if (!limpar_sala_se_abandonada($mysqli, $id_sala)) {
     http_response_code(404);
     echo json_encode(['erro' => 'sala não encontrada']);
     exit;
 }
 
+// remove participantes sem sinal de vida recente (aba fechada, PC travou, etc.)
+limpar_participantes_inativos($mysqli, $id_sala);
+
 // TIMESTAMPDIFF roda dentro do próprio MySQL: fala_inicio e "agora" vêm da
 // mesma fonte de tempo, então não há risco de descompasso de fuso/relógio
-// entre o container do PHP e o do banco (causa do bug do cronômetro).
+// entre o container do PHP e o do banco.
 $stmt = $mysqli->prepare("
     SELECT fk_participante_falando, tempo_de_fala, data_inicio,
            TIMESTAMPDIFF(SECOND, fala_inicio, NOW()) AS decorrido_fala

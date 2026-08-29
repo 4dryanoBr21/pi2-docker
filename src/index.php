@@ -34,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $sala = $result->fetch_assoc();
                     $id_sala = $sala['id_sala'];
 
-                    $stmt_insert = $mysqli->prepare("INSERT INTO participante (nome_participante, fk_sala_atual) VALUES (?, ?)");
+                    $stmt_insert = $mysqli->prepare("INSERT INTO participante (nome_participante, fk_sala_atual, ultima_atividade) VALUES (?, ?, NOW())");
                     if ($stmt_insert) {
                         $stmt_insert->bind_param("si", $nome, $id_sala);
                         if ($stmt_insert->execute()) {

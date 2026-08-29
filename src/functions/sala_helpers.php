@@ -62,3 +62,43 @@ function limpar_sala_se_abandonada(mysqli $mysqli, int $id_sala, int $limite_min
 
     return true;
 }
+
+/**
+ * Remove da sala qualquer participante sem sinal de vida recente (mesmo
+ * princípio da limpeza de sala abandonada, só que por participante).
+ * Participantes com `ultima_atividade` NULL (acabaram de entrar, ainda
+ * não tiveram tempo de mandar o primeiro sinal de vida) nunca são
+ * removidos por esse motivo.
+ */
+function limpar_participantes_inativos(mysqli $mysqli, int $id_sala, int $limite_minutos = 2): void
+{
+    $stmt = $mysqli->prepare("
+        SELECT id_participante
+        FROM participante
+        WHERE fk_sala_atual = ?
+          AND ultima_atividade IS NOT NULL
+          AND ultima_atividade < (NOW() - INTERVAL ? MINUTE)
+    ");
+    $stmt->bind_param("ii", $id_sala, $limite_minutos);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $inativos = [];
+    while ($row = $result->fetch_assoc()) {
+        $inativos[] = (int) $row['id_participante'];
+    }
+    $stmt->close();
+
+    foreach ($inativos as $id_participante) {
+        // se era quem estava com a palavra, libera a vez antes de remover
+        $stmt0 = $mysqli->prepare("UPDATE sala SET fk_participante_falando = NULL, fala_inicio = NULL WHERE fk_participante_falando = ?");
+        $stmt0->bind_param("i", $id_participante);
+        $stmt0->execute();
+        $stmt0->close();
+
+        $stmt1 = $mysqli->prepare("DELETE FROM participante WHERE id_participante = ?");
+        $stmt1->bind_param("i", $id_participante);
+        $stmt1->execute();
+        $stmt1->close();
+    }
+}
