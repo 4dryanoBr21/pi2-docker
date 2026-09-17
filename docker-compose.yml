@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   app:
     build: .
@@ -8,8 +10,9 @@ services:
       DB_USER: ${MYSQL_USER}
       DB_PASSWORD: ${MYSQL_PASSWORD}
       DB_NAME: ${MYSQL_DATABASE}
-    ports:
-      - "${APP_PORT}:80"
+    # Removido 'ports'. O container fica acessível apenas internamente para o proxy.
+    expose:
+      - "80"
     volumes:
       - ./src:/var/www/html
     depends_on:
@@ -51,6 +54,21 @@ services:
       - "${PHPMYADMIN_PORT}:80"
     depends_on:
       - db
+    networks:
+      - pi2_net
+
+  proxy:
+    image: nginx:alpine
+    container_name: pi2_proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      - app
     networks:
       - pi2_net
 

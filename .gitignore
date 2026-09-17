@@ -1,1 +1,14 @@
+# Variáveis de ambiente e senhas
 .env
+*.env
+
+# Certificados SSL e Chaves Privadas
+nginx/certs/
+*.crt
+*.key
+*.pem
+
+# Uploads locais, logs e arquivos de banco
+/src/uploads/
+*.log
+*.sql
