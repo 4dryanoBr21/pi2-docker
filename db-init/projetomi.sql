@@ -47,7 +47,8 @@ CREATE TABLE `participante` (
   `id_participante` int(11) NOT NULL,
   `nome_participante` varchar(100) DEFAULT NULL,
   `fk_sala_atual` int(11) DEFAULT NULL,
-  `data_hora_solicitacao` datetime DEFAULT NULL
+  `data_hora_solicitacao` datetime DEFAULT NULL,
+  `ultima_atividade` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------

@@ -8,7 +8,8 @@ nginx/certs/
 *.key
 *.pem
 
-# Uploads locais, logs e arquivos de banco
+# Uploads locais, logs e dumps de banco (mas mantém o schema de inicialização)
 /src/uploads/
 *.log
 *.sql
+!db-init/*.sql
