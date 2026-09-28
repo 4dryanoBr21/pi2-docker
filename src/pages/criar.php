@@ -4,6 +4,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 include("../functions/conexao.php");
 require("../functions/csrf.php");
+require("../functions/idioma.php");
 
 $autenticado = false;
 
@@ -66,16 +67,16 @@ $codigo_sala = gerar_codigo_sala_aleatorio();
 if (isset($_POST['submit'])) {
 
     if (!csrf_verify($_POST['csrf_token'] ?? null)) {
-        $erro = "Sessão expirada. Recarregue a página e tente novamente.";
+        $erro = t('erro_sessao_expirada');
     } else {
         $nome_sala = trim($_POST['nome'] ?? '');
         $tempo = trim($_POST['tempo'] ?? '');
         $codigo_sala = trim($_POST['codigo'] ?? '');
 
         if ($nome_sala === '' || $tempo === '' || $codigo_sala === '') {
-            $erro = "Por favor preencha todos os campos.";
+            $erro = t('erro_preencha_todos_campos');
         } elseif (!preg_match('/^[A-Za-z0-9]{4,20}$/', $codigo_sala)) {
-            $erro = "O código da sala deve ter de 4 a 20 caracteres, apenas letras e números.";
+            $erro = t('erro_codigo_formato');
         } else {
             $stmt_check = $mysqli->prepare("SELECT id_sala FROM sala WHERE nome_sala = ?");
             if ($stmt_check) {
@@ -84,11 +85,11 @@ if (isset($_POST['submit'])) {
                 $result_check = $stmt_check->get_result();
 
                 if ($result_check && $result_check->num_rows > 0) {
-                    $erro = "Sala já existente.";
+                    $erro = t('erro_sala_existente');
                 }
                 $stmt_check->close();
             } else {
-                $erro = "Erro ao preparar consulta de verificação.";
+                $erro = t('erro_preparar_verificacao');
             }
 
             if (empty($erro)) {
@@ -99,18 +100,18 @@ if (isset($_POST['submit'])) {
                     $result_check_codigo = $stmt_check_codigo->get_result();
 
                     if ($result_check_codigo && $result_check_codigo->num_rows > 0) {
-                        $erro = "Esse código de sala já está em uso. Escolha outro.";
+                        $erro = t('erro_codigo_em_uso');
                     }
                     $stmt_check_codigo->close();
                 } else {
-                    $erro = "Erro ao preparar consulta de verificação.";
+                    $erro = t('erro_preparar_verificacao');
                 }
             }
 
             if (empty($erro)) {
                 $stmt = $mysqli->prepare("INSERT INTO sala (nome_sala, codigo_sala, tempo_de_fala) VALUES (?, ?, ?)");
                 if ($stmt === false) {
-                    $erro = "Erro interno. Tente novamente.";
+                    $erro = t('erro_interno_tente_novamente');
                 } else {
                     $stmt->bind_param("sss", $nome_sala, $codigo_sala, $tempo);
                     if ($stmt->execute()) {
@@ -128,7 +129,7 @@ if (isset($_POST['submit'])) {
                         header("Location: criador.php?id_sala=$id_sala");
                         exit();
                     } else {
-                        $erro = "Erro ao criar sala. Tente novamente.";
+                        $erro = t('erro_criar_sala');
                         $stmt->close();
                     }
                 }
@@ -138,7 +139,7 @@ if (isset($_POST['submit'])) {
 }
 ?>
 
-<html lang="pt-BR">
+<html lang="<?php echo $idioma_atual === 'es' ? 'es' : 'pt-BR'; ?>">
 
 <head>
     <meta charset="UTF-8">
@@ -151,21 +152,22 @@ if (isset($_POST['submit'])) {
     <link href='https://fonts.googleapis.com/css?family=Montserrat' rel='stylesheet'>
     <link rel="stylesheet" href="../style.css">
     <link rel="shortcut icon" href="../img/MI_legenda_branco.png" type="image/x-icon">
-    <title>ME INSCREVO - Criar Sala</title>
+    <title><?php echo t('title_criar_sala'); ?></title>
 </head>
 
 <body>
+    <?php idioma_switch_html(); ?>
     <div class="container">
         <div class="row">
             <div class="col-md-4"></div>
             <div class="col-md-4">
                 <div class="text-center">
-                    <img class="logo-black rounded" src="../img/MI_legenda.png" alt="Logo do ME INSCREVO">
+                    <img class="logo-black rounded" src="../img/MI_legenda.png" alt="<?php echo te('alt_logo'); ?>">
                 </div>
                 <div class="card shadow">
-                    <button type="button" class="btn-close" id="btnSair" aria-label="Sair da conta"></button>
+                    <button type="button" class="btn-close" id="btnSair" aria-label="<?php echo te('aria_sair_conta'); ?>"></button>
                     <div class="card-body">
-                        <h2 class="text-center fw-bold">Criar Sala</h2><br>
+                        <h2 class="text-center fw-bold"><?php echo t('titulo_criar_sala'); ?></h2><br>
 
                         <form action="" method="POST">
                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
@@ -175,25 +177,24 @@ if (isset($_POST['submit'])) {
                                 </div>
                             <?php endif; ?>
 
-                            <label for="nome" class="form-label">Nome da Sala</label>
+                            <label for="nome" class="form-label"><?php echo t('label_nome_sala'); ?></label>
                             <input name="nome" type="text" class="form-control" id="nome"
                                 value="<?php echo htmlspecialchars($nome_sala, ENT_QUOTES, 'UTF-8'); ?>" required /><br>
 
-                            <label for="codigo" class="form-label">Código da Sala</label>
+                            <label for="codigo" class="form-label"><?php echo t('label_codigo_sala'); ?></label>
                             <div class="input-group">
                                 <input name="codigo" type="text" class="form-control" id="codigo"
                                     value="<?php echo htmlspecialchars($codigo_sala, ENT_QUOTES, 'UTF-8'); ?>"
                                     required />
-                                <button class="btn btn-outline-secondary" type="button" id="copiarCodigo">Copiar código</button>
+                                <button class="btn btn-outline-secondary" type="button" id="copiarCodigo"><?php echo t('btn_copiar_codigo'); ?></button>
                             </div><br>
 
-                            <label for="tempo" class="form-label">Tempo de fala dos participantes
-                                (horas:minutos:segundos)</label>
+                            <label for="tempo" class="form-label"><?php echo t('label_tempo_fala'); ?></label>
                             <input name="tempo" type="time" step="1" class="form-control" id="tempo"
                                 value="<?php echo htmlspecialchars($tempo, ENT_QUOTES, 'UTF-8'); ?>" required /><br>
 
                             <div class="d-grid gap-2">
-                                <button class="btn btn-dark" name="submit" type="submit">Criar</button>
+                                <button class="btn btn-dark" name="submit" type="submit"><?php echo t('btn_criar'); ?></button>
                             </div>
                         </form>
                     </div>
@@ -204,6 +205,9 @@ if (isset($_POST['submit'])) {
     </div>
 
     <script>
+        const textoCopiarCodigoOriginal = <?php echo tj('btn_copiar_codigo'); ?>;
+        const textoCopiado = <?php echo tj('texto_copiado'); ?>;
+
         document.getElementById("btnSair").addEventListener("click", () => {
             window.open("../functions/logout.php", "_self");
         });
@@ -213,10 +217,9 @@ if (isset($_POST['submit'])) {
             const botao = document.getElementById("copiarCodigo");
 
             navigator.clipboard.writeText(campo.value).then(() => {
-                const textoOriginal = botao.textContent;
-                botao.textContent = "Copiado!";
+                botao.textContent = textoCopiado;
                 setTimeout(() => {
-                    botao.textContent = textoOriginal;
+                    botao.textContent = textoCopiarCodigoOriginal;
                 }, 1500);
             }).catch(() => {
                 // fallback para navegadores/contextos sem permissão de clipboard

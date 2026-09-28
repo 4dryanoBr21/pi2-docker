@@ -1,6 +1,7 @@
 <?php
 require('functions/conexao.php');
 require('functions/csrf.php');
+require('functions/idioma.php');
 
 $erro = "";
 $codigo_valor = "";
@@ -9,7 +10,7 @@ $nome_valor = "";
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!csrf_verify($_POST['csrf_token'] ?? null)) {
-        $erro = "Sessão expirada. Recarregue a página e tente novamente.";
+        $erro = t('erro_sessao_expirada');
     } else {
         $codigo = trim($_POST['codigo'] ?? '');
         $nome = trim($_POST['nome'] ?? '');
@@ -17,11 +18,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $nome_valor = $nome;
 
         if (empty($codigo)) {
-            $erro = "Preencha o código da sala!";
+            $erro = t('erro_preencha_codigo');
         } elseif (empty($nome)) {
-            $erro = "Preencha seu nome!";
+            $erro = t('erro_preencha_nome');
         } elseif (mb_strlen($nome) > 100) {
-            $erro = "Nome muito longo (máximo 100 caracteres).";
+            $erro = t('erro_nome_longo');
         } else {
 
             $stmt = $mysqli->prepare("SELECT id_sala, nome_sala FROM sala WHERE codigo_sala = ?");
@@ -48,23 +49,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             header("Location: pages/participante.php");
                             exit;
                         } else {
-                            $erro = "Erro ao inserir participante.";
+                            $erro = t('erro_inserir_participante');
                         }
                         $stmt_insert->close();
                     }
                 } else {
-                    $erro = "Código de sala inválido.";
+                    $erro = t('erro_codigo_invalido');
                 }
 
                 $stmt->close();
             } else {
-                $erro = "Erro ao preparar consulta SQL.";
+                $erro = t('erro_preparar_consulta');
             }
         }
     }
 }
 ?>
-<html lang="pt-BR">
+<html lang="<?php echo $idioma_atual === 'es' ? 'es' : 'pt-BR'; ?>">
 
 <head>
     <meta charset="UTF-8">
@@ -81,16 +82,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 
 <body>
+    <?php idioma_switch_html(); ?>
     <div class="container">
         <div class="row">
             <div class="col-md-4"></div>
             <div class="col-md-4">
                 <div class="text-center">
-                    <img class="logo-black rounded" src="img/MI_legenda.png" alt="Logo do ME INSCREVO">
+                    <img class="logo-black rounded" src="img/MI_legenda.png" alt="<?php echo te('alt_logo'); ?>">
                 </div>
                 <div class="card shadow">
                     <div class="card-body">
-                        <h2 class="text-center fw-bold">Entrar na Sala</h2><br>
+                        <h2 class="text-center fw-bold"><?php echo t('titulo_entrar_sala'); ?></h2><br>
                         <form action="" method="POST">
                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
                             <?php if (!empty($erro)): ?>
@@ -98,17 +100,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <?php echo htmlspecialchars($erro, ENT_QUOTES, 'UTF-8'); ?>
                                 </div>
                             <?php endif; ?>
-                            <label for="codigo" class="form-label">Código da Sala</label>
+                            <label for="codigo" class="form-label"><?php echo t('label_codigo_sala'); ?></label>
                             <input name="codigo" type="text" class="form-control" id="codigo"
                                 value="<?php echo htmlspecialchars($codigo_valor, ENT_QUOTES, 'UTF-8'); ?>" required><br>
 
-                            <label for="nome" class="form-label">Nome do Convidado</label>
+                            <label for="nome" class="form-label"><?php echo t('label_nome_convidado'); ?></label>
                             <input name="nome" type="text" class="form-control" id="nome"
                                 value="<?php echo htmlspecialchars($nome_valor, ENT_QUOTES, 'UTF-8'); ?>" required><br>
 
                             <div class="d-grid gap-2">
-                                <button class="btn btn-dark" type="submit">Entrar</button>
-                                <button id="login" class="btn" type="button">Criar Sala</button>
+                                <button class="btn btn-dark" type="submit"><?php echo t('btn_entrar'); ?></button>
+                                <button id="login" class="btn" type="button"><?php echo t('btn_criar_sala'); ?></button>
                             </div>
                         </form>
                     </div>

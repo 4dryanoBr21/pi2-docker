@@ -1,6 +1,7 @@
 <?php
 include("../functions/conexao.php");
 require("../functions/csrf.php");
+require("../functions/idioma.php");
 
 $mensagem = "";
 $tipo_alerta = "";
@@ -11,7 +12,7 @@ $email = "";
 if (isset($_POST['submit'])) {
 
     if (!csrf_verify($_POST['csrf_token'] ?? null)) {
-        $mensagem = "Sessão expirada. Recarregue a página e tente novamente.";
+        $mensagem = t('erro_sessao_expirada');
         $tipo_alerta = "danger";
     } else {
         $nome = trim($_POST['nome'] ?? '');
@@ -19,13 +20,13 @@ if (isset($_POST['submit'])) {
         $senha_texto = $_POST['senha'] ?? '';
 
         if ($nome === '' || $email === '' || $senha_texto === '') {
-            $mensagem = "Preencha todos os campos.";
+            $mensagem = t('erro_preencha_campos');
             $tipo_alerta = "danger";
         } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $mensagem = "Digite um e-mail válido.";
+            $mensagem = t('erro_email_invalido');
             $tipo_alerta = "danger";
         } elseif (strlen($senha_texto) < 8) {
-            $mensagem = "A senha precisa ter pelo menos 8 caracteres.";
+            $mensagem = t('erro_senha_minima');
             $tipo_alerta = "danger";
         } else {
             $stmt_check = $mysqli->prepare("SELECT id_criador FROM criador WHERE nome_criador = ? OR email = ?");
@@ -35,7 +36,7 @@ if (isset($_POST['submit'])) {
                 $result_check = $stmt_check->get_result();
 
                 if ($result_check && $result_check->num_rows > 0) {
-                    $mensagem = "Usuário ou E-mail já cadastrado no sistema.";
+                    $mensagem = t('erro_usuario_existente');
                     $tipo_alerta = "danger";
                 } else {
                     $senha_hash = password_hash($senha_texto, PASSWORD_DEFAULT);
@@ -45,12 +46,12 @@ if (isset($_POST['submit'])) {
                         $stmt_insert->bind_param("sss", $nome, $email, $senha_hash);
 
                         if ($stmt_insert->execute()) {
-                            $mensagem = 'Usuário cadastrado com sucesso. Clique em <a href="login.php" class="alert-link">aqui</a> para continuar';
+                            $mensagem = t('msg_cadastro_sucesso', t('msg_cadastro_sucesso_link'));
                             $tipo_alerta = "success";
                             $nome = "";
                             $email = "";
                         } else {
-                            $mensagem = "Erro ao realizar o cadastro no banco de dados.";
+                            $mensagem = t('erro_cadastro_bd');
                             $tipo_alerta = "danger";
                         }
                         $stmt_insert->close();
@@ -58,14 +59,14 @@ if (isset($_POST['submit'])) {
                 }
                 $stmt_check->close();
             } else {
-                $mensagem = "Erro interno no servidor de dados.";
+                $mensagem = t('erro_servidor_dados');
                 $tipo_alerta = "danger";
             }
         }
     }
 }
 ?>
-<html lang="pt-BR">
+<html lang="<?php echo $idioma_atual === 'es' ? 'es' : 'pt-BR'; ?>">
 
 <head>
     <meta charset="UTF-8">
@@ -78,21 +79,22 @@ if (isset($_POST['submit'])) {
     <link href='https://fonts.googleapis.com/css?family=Montserrat' rel='stylesheet'>
     <link rel="stylesheet" href="../style.css">
     <link rel="shortcut icon" href="../img/MI_legenda_branco.png" type="image/x-icon">
-    <title>ME INSCREVO - Register</title>
+    <title><?php echo t('title_register'); ?></title>
 </head>
 
 <body>
+    <?php idioma_switch_html(); ?>
     <div class="container">
         <div class="row">
             <div class="col-md-4"></div>
             <div class="col-md-4">
                 <div class="text-center">
-                    <img class="logo-black rounded" src="../img/MI_legenda.png" alt="Logo do ME INSCREVO">
+                    <img class="logo-black rounded" src="../img/MI_legenda.png" alt="<?php echo te('alt_logo'); ?>">
                 </div>
                 <div class="card">
-                    <button type="button" class="btn-close" id="btnSair" aria-label="Sair sem registrar"></button>
+                    <button type="button" class="btn-close" id="btnSair" aria-label="<?php echo te('aria_sair_sem_registrar'); ?>"></button>
                     <div class="card-body">
-                        <h2 class="text-center fw-bold">Register</h2><br>
+                        <h2 class="text-center fw-bold"><?php echo t('titulo_register'); ?></h2><br>
 
                         <?php if (!empty($mensagem)): ?>
                             <div class="alert alert-<?php echo $tipo_alerta; ?>" role="alert">
@@ -102,21 +104,21 @@ if (isset($_POST['submit'])) {
 
                         <form action="" method="POST">
                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
-                            <label for="exampleInput1" class="form-label">Username</label>
+                            <label for="exampleInput1" class="form-label"><?php echo t('label_username'); ?></label>
                             <input name="nome" type="text" class="form-control" id="exampleInput1"
                                 value="<?php echo htmlspecialchars($nome, ENT_QUOTES, 'UTF-8'); ?>" required><br>
 
-                            <label for="exampleInputEmail1" class="form-label">Email address</label>
+                            <label for="exampleInputEmail1" class="form-label"><?php echo t('label_email'); ?></label>
                             <input name="email" type="email" class="form-control" id="exampleInputEmail1"
                                 value="<?php echo htmlspecialchars($email, ENT_QUOTES, 'UTF-8'); ?>" aria-describedby="emailHelp" required><br>
 
-                            <label for="exampleInputPassword1" class="form-label">Password</label>
+                            <label for="exampleInputPassword1" class="form-label"><?php echo t('label_password'); ?></label>
                             <input name="senha" type="password" class="form-control" id="exampleInputPassword1"
                                 minlength="8" required aria-describedby="senhaAjuda">
-                            <div id="senhaAjuda" class="form-text">Mínimo de 8 caracteres.</div><br>
+                            <div id="senhaAjuda" class="form-text"><?php echo t('texto_min_caracteres'); ?></div><br>
 
                             <div class="d-grid gap-2">
-                                <button class="btn btn-dark" name="submit" type="submit">Registrar</button>
+                                <button class="btn btn-dark" name="submit" type="submit"><?php echo t('btn_registrar'); ?></button>
                             </div>
                         </form>
                     </div>

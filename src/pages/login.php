@@ -2,6 +2,7 @@
 session_start();
 include("../functions/conexao.php");
 require("../functions/csrf.php");
+require("../functions/idioma.php");
 
 $erro = "";
 
@@ -12,15 +13,15 @@ $LIMITE_INATIVIDADE_MINUTOS = 1;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!csrf_verify($_POST['csrf_token'] ?? null)) {
-        $erro = "Sessão expirada. Recarregue a página e tente novamente.";
+        $erro = t('erro_sessao_expirada');
     } else {
         $identificador = trim($_POST['identificador'] ?? '');
         $senha = trim($_POST['senha'] ?? '');
 
         if (empty($identificador)) {
-            $erro = "Preencha seu e-mail ou nome de usuário!";
+            $erro = t('erro_preencha_email_usuario');
         } else if (empty($senha)) {
-            $erro = "Preencha sua senha!";
+            $erro = t('erro_preencha_senha');
         } else {
             // autentica tanto por e-mail quanto por nome de usuário
             $stmt = $mysqli->prepare("SELECT id_criador, nome_criador, senha, session_token, session_last_activity FROM criador WHERE email = ? OR nome_criador = ?");
@@ -48,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
 
                         if ($sessao_ativa) {
-                            $erro = "Esta conta já está logada em outro dispositivo/aba. Saia de lá primeiro, ou aguarde alguns minutos de inatividade e tente novamente.";
+                            $erro = t('erro_conta_logada');
                         } else {
                             $novo_token = bin2hex(random_bytes(32));
 
@@ -67,25 +68,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 header("Location: criar.php");
                                 exit();
                             } else {
-                                $erro = "Erro interno ao registrar sessão.";
+                                $erro = t('erro_registrar_sessao');
                             }
                         }
                     } else {
-                        $erro = "Usuário ou senha incorretos!";
+                        $erro = t('erro_usuario_senha_incorretos');
                     }
                 } else {
-                    $erro = "Usuário ou senha incorretos!";
+                    $erro = t('erro_usuario_senha_incorretos');
                 }
                 $stmt->close();
             } else {
-                $erro = "Erro interno no servidor de banco de dados.";
+                $erro = t('erro_servidor_bd');
             }
         }
     }
 }
 ?>
 
-<html lang="pt-BR">
+<html lang="<?php echo $idioma_atual === 'es' ? 'es' : 'pt-BR'; ?>">
 
 <head>
     <meta charset="UTF-8">
@@ -98,21 +99,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link href='https://fonts.googleapis.com/css?family=Montserrat' rel='stylesheet'>
     <link rel="stylesheet" href="../style.css">
     <link rel="shortcut icon" href="../img/MI_legenda_branco.png" type="image/x-icon">
-    <title>ME INSCREVO - Login</title>
+    <title><?php echo t('title_login'); ?></title>
 </head>
 
 <body>
+    <?php idioma_switch_html(); ?>
     <div class="container">
         <div class="row">
             <div class="col-md-4"></div>
             <div class="col-md-4">
                 <div class="text-center">
-                    <img class="logo-black rounded" src="../img/MI_legenda.png" alt="Logo do ME INSCREVO">
+                    <img class="logo-black rounded" src="../img/MI_legenda.png" alt="<?php echo te('alt_logo'); ?>">
                 </div>
                 <div class="card shadow">
-                    <button type="button" class="btn-close" id="btnSair" aria-label="Sair sem entrar"></button>
+                    <button type="button" class="btn-close" id="btnSair" aria-label="<?php echo te('aria_sair_sem_entrar'); ?>"></button>
                     <div class="card-body">
-                        <h2 class="text-center fw-bold">Login</h2><br>
+                        <h2 class="text-center fw-bold"><?php echo t('titulo_login'); ?></h2><br>
                         <form action="" method="POST">
                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
                             <?php if (!empty($erro)): ?>
@@ -120,17 +122,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <?php echo htmlspecialchars($erro, ENT_QUOTES, 'UTF-8'); ?>
                                 </div>
                             <?php endif; ?>
-                            <label for="identificador" class="form-label">Nome de usuário ou e-mail</label>
+                            <label for="identificador" class="form-label"><?php echo t('label_usuario_email'); ?></label>
                             <input name="identificador" type="text" class="form-control" id="identificador"
                                 value="<?php echo isset($_POST['identificador']) ? htmlspecialchars($_POST['identificador'], ENT_QUOTES, 'UTF-8') : ''; ?>"
                                 required><br>
 
-                            <label for="password" class="form-label">Senha</label>
+                            <label for="password" class="form-label"><?php echo t('label_senha'); ?></label>
                             <input name="senha" type="password" class="form-control" id="password" required><br>
 
                             <div class="d-grid gap-2">
-                                <button class="btn btn-dark" name="submit" type="submit">Entrar</button>
-                                <button id="cad" class="btn" type="button">Registrar</button>
+                                <button class="btn btn-dark" name="submit" type="submit"><?php echo t('btn_entrar'); ?></button>
+                                <button id="cad" class="btn" type="button"><?php echo t('btn_registrar'); ?></button>
                             </div>
                         </form>
                     </div>

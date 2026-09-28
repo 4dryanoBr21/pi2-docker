@@ -1,6 +1,7 @@
 <?php
 require("../functions/conexao.php");
 require("../functions/csrf.php");
+require("../functions/idioma.php");
 
 if (!isset($_SESSION['codigo']) || !isset($_SESSION['nome'])) {
     header("Location: ../index.php");
@@ -20,7 +21,7 @@ if ($result && $result->num_rows > 0) {
     $id_sala = $sala['id_sala'];
     $nome_sala = $sala['nome_sala'];
 } else {
-    echo "Sala não encontrada.";
+    echo t('erro_sala_nao_encontrada_simples');
     exit;
 }
 
@@ -29,7 +30,7 @@ $stmt->close();
 $csrf = csrf_token();
 ?>
 
-<html lang="pt-BR">
+<html lang="<?php echo $idioma_atual === 'es' ? 'es' : 'pt-BR'; ?>">
 
 <head>
     <meta charset="UTF-8">
@@ -46,35 +47,36 @@ $csrf = csrf_token();
 </head>
 
 <body>
+    <?php idioma_switch_html(); ?>
     <div class="container">
         <div class="row">
             <div class="col-md-3"></div>
             <div class="col-md-6">
                 <div class="text-center">
-                    <img class="logo-black rounded" src="../img/MI_legenda.png" alt="Logo do ME INSCREVO">
+                    <img class="logo-black rounded" src="../img/MI_legenda.png" alt="<?php echo te('alt_logo'); ?>">
                 </div>
                 <div class="card">
-                    <button type="button" class="btn-close" id="btnSair" aria-label="Sair da sala"></button>
+                    <button type="button" class="btn-close" id="btnSair" aria-label="<?php echo te('aria_sair_sala'); ?>"></button>
                     <div class="card-body">
                         <h2 class="text-center fw-bold"><?php echo htmlspecialchars($nome_sala); ?></h2>
 
                         <div id="painelEstado" class="text-center p-4 mb-3 rounded shadow-sm"
                             style="background:#f5f5f5;" aria-live="polite">
                             <div id="estadoAguardando">
-                                <p class="mb-1">Aguardando...</p>
-                                <p id="posicaoFila" class="text-muted">Levante a mão para entrar na fila.</p>
+                                <p class="mb-1"><?php echo t('texto_aguardando'); ?></p>
+                                <p id="posicaoFila" class="text-muted"><?php echo t('texto_levante_mao'); ?></p>
                             </div>
                             <div id="estadoFalando" style="display:none;">
-                                <h4 class="fw-bold mb-1">É a sua vez de falar!</h4>
+                                <h4 class="fw-bold mb-1"><?php echo t('texto_sua_vez'); ?></h4>
                                 <div style="font-size: 48px;" id="contadorFala">00:00</div>
                             </div>
                         </div>
 
                         <div class="d-grid gap-2 mb-3">
-                            <button id="mao" class="btn" type="button" style="font-size: 75px;" aria-label="Levantar a mão">🤚</button>
+                            <button id="mao" class="btn" type="button" style="font-size: 75px;" aria-label="<?php echo te('aria_levantar_mao'); ?>">🤚</button>
                         </div>
 
-                        <h6 class="fw-bold">Participantes presentes</h6>
+                        <h6 class="fw-bold"><?php echo t('titulo_participantes_presentes'); ?></h6>
                         <div id="listaPresentes" class="d-grid gap-2 overflow-auto shadow p-3 mb-2 bg-body-tertiary rounded"
                             style="height: 160px;" aria-live="polite">
                         </div>
@@ -92,6 +94,25 @@ $csrf = csrf_token();
         let restanteLocal = null;
         let maoLevantada = false;
         let speakerAtualId = null;
+
+        const textos = {
+            levanteAMao: <?php echo tj('texto_levante_mao'); ?>,
+            posicaoFila: <?php echo tj('texto_posicao_fila'); ?>,
+            abaixarMao: <?php echo tj('aria_abaixar_mao'); ?>,
+            levantarMao: <?php echo tj('aria_levantar_mao'); ?>,
+            nenhumParticipanteAinda: <?php echo tj('texto_nenhum_participante_ainda'); ?>,
+            voceSufixo: <?php echo tj('texto_voce_sufixo'); ?>,
+            erroSairSala: <?php echo tj('erro_sair_sala'); ?>
+        };
+
+        function formatarPosicaoFila(posicao, total) {
+            // textos.posicaoFila vem do PHP no formato usado por sprintf/vsprintf
+            // (ex.: "Você é o %dº da fila (%d no total)."); replicamos a mesma
+            // lógica em JS trocando os "%d" na ordem em que aparecem.
+            let indice = 0;
+            const valores = [posicao, total];
+            return textos.posicaoFila.replace(/%d/g, () => valores[indice++]);
+        }
 
         function verificarSala() {
             fetch("../functions/verifica_sala.php?id_sala=" + idSala)
@@ -138,23 +159,23 @@ $csrf = csrf_token();
 
                         const posicao = estado.fila.findIndex(p => p.id_participante === idParticipante);
                         if (posicao === -1) {
-                            document.getElementById("posicaoFila").textContent = "Levante a mão para entrar na fila.";
+                            document.getElementById("posicaoFila").textContent = textos.levanteAMao;
                             maoLevantada = false;
                         } else {
                             document.getElementById("posicaoFila").textContent =
-                                `Você é o ${posicao + 1}º da fila (${estado.fila.length} no total).`;
+                                formatarPosicaoFila(posicao + 1, estado.fila.length);
                             maoLevantada = true;
                         }
                     }
 
                     mao.textContent = maoLevantada || souEu ? "❌" : "🤚";
-                    mao.setAttribute("aria-label", maoLevantada || souEu ? "Abaixar a mão" : "Levantar a mão");
+                    mao.setAttribute("aria-label", maoLevantada || souEu ? textos.abaixarMao : textos.levantarMao);
 
                     const listaPresentes = document.getElementById("listaPresentes");
                     listaPresentes.innerHTML = "";
                     if (estado.presentes.length === 0) {
                         const vazio = document.createElement("p");
-                        vazio.textContent = "Nenhum participante na sala ainda.";
+                        vazio.textContent = textos.nenhumParticipanteAinda;
                         listaPresentes.appendChild(vazio);
                     } else {
                         const idsNaFila = new Set(estado.fila.map(p => p.id_participante));
@@ -166,7 +187,7 @@ $csrf = csrf_token();
                             } else if (idsNaFila.has(p.id_participante)) {
                                 marcador = " 🤚";
                             }
-                            const voce = p.id_participante === idParticipante ? " (você)" : "";
+                            const voce = p.id_participante === idParticipante ? textos.voceSufixo : "";
                             item.textContent = p.nome + voce + marcador;
                             listaPresentes.appendChild(item);
                         });
@@ -197,7 +218,7 @@ $csrf = csrf_token();
                     if (ret.trim() === "ok") {
                         window.location.href = "../index.php";
                     } else {
-                        alert("Erro ao sair da sala.");
+                        alert(textos.erroSairSala);
                     }
                 })
                 .catch(err => console.error("Erro:", err));

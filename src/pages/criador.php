@@ -1,6 +1,7 @@
 <?php
 include('../functions/conexao.php');
 require('../functions/csrf.php');
+require('../functions/idioma.php');
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -28,7 +29,7 @@ if (!$autenticado) {
 }
 
 if (!isset($_GET['id_sala'])) {
-  die("Sala não especificada. <a href='criar.php'>Voltar</a>");
+  die(t('erro_sala_nao_especificada', t('texto_voltar')));
 }
 
 $id_sala = intval($_GET['id_sala']);
@@ -40,7 +41,7 @@ $eh_dono = $stmt_dono->get_result()->num_rows > 0;
 $stmt_dono->close();
 
 if (!$eh_dono) {
-    die("Você não tem permissão para acessar esta sala. <a href='criar.php'>Voltar</a>");
+    die(t('erro_sem_permissao', t('texto_voltar')));
 }
 
 $stmt_touch = $mysqli->prepare("UPDATE criador SET session_last_activity = NOW() WHERE id_criador = ?");
@@ -65,13 +66,13 @@ if ($row) {
   $tempo_fala = htmlspecialchars($row['tempo_de_fala']);
   $data_inicio_js = htmlspecialchars($row['data_inicio']);
 } else {
-  die("Sala não encontrada. <a href='criar.php'>Voltar</a>");
+  die(t('erro_sala_nao_encontrada', t('texto_voltar')));
 }
 
 $csrf = csrf_token();
 ?>
 
-<html lang="pt-BR">
+<html lang="<?php echo $idioma_atual === 'es' ? 'es' : 'pt-BR'; ?>">
 
 <head>
   <meta charset="UTF-8">
@@ -84,32 +85,33 @@ $csrf = csrf_token();
   <link href='https://fonts.googleapis.com/css?family=Montserrat' rel='stylesheet'>
   <link rel="stylesheet" href="../style.css">
   <link rel="shortcut icon" href="../img/MI_legenda_branco.png" type="image/x-icon">
-  <title>ME INSCREVO - Sala <?php echo $nome_sala; ?></title>
+  <title>ME INSCREVO - <?php echo $nome_sala; ?></title>
 </head>
 
 <body>
-  <a href="../functions/logout.php" class="btn btn-sm btn-outline-dark" style="position:absolute; top:16px; right:16px;">Sair</a>
+  <?php idioma_switch_html(); ?>
+  <a href="../functions/logout.php" class="btn btn-sm btn-outline-dark" style="position:absolute; top:16px; right:16px;"><?php echo t('btn_sair'); ?></a>
   <div class="container">
     <div class="row">
       <div class="col-md-3"></div>
       <div class="col-md-6">
         <div class="text-center">
-          <img class="logo-black rounded" src="../img/MI_legenda.png" alt="Logo do ME INSCREVO">
+          <img class="logo-black rounded" src="../img/MI_legenda.png" alt="<?php echo te('alt_logo'); ?>">
         </div>
         <div class="card">
-          <button type="button" class="btn-close" aria-label="Encerrar sala e apagar todos os participantes"></button>
+          <button type="button" class="btn-close" aria-label="<?php echo te('aria_encerrar_sala'); ?>"></button>
           <div class="card-body">
             <h2 class="text-center fw-bold">
               <?php echo $nome_sala; ?>
-              <span class="fs-6 text-muted d-block">Código: <?php echo $codigo_sala; ?></span>
+              <span class="fs-6 text-muted d-block"><?php echo t('label_codigo_prefixo'); ?> <?php echo $codigo_sala; ?></span>
             </h2>
             <p class="text-center text-muted mb-3">
-              Tempo de reunião: <span id="tempoReuniao">00:00</span> &middot;
-              Tempo de fala por participante: <?php echo $tempo_fala; ?>
+              <?php echo t('texto_tempo_reuniao'); ?> <span id="tempoReuniao">00:00</span> &middot;
+              <?php echo t('texto_tempo_fala_participante'); ?> <?php echo $tempo_fala; ?>
             </p>
 
             <div id="painelFalando" class="text-center p-4 mb-3 rounded shadow-sm" style="background:#f5f5f5;" aria-live="polite">
-              <div id="semFalante">Nenhum participante falando no momento.</div>
+              <div id="semFalante"><?php echo t('texto_nenhum_falando'); ?></div>
               <div id="comFalante" style="display:none;">
                 <h4 class="fw-bold mb-1" id="nomeFalante"></h4>
                 <div style="font-size: 48px;" id="contadorFala">00:00</div>
@@ -117,10 +119,10 @@ $csrf = csrf_token();
             </div>
 
             <div class="d-grid gap-2 mb-3">
-              <button id="btnProximo" class="btn btn-dark" type="button">Iniciar fala do próximo</button>
+              <button id="btnProximo" class="btn btn-dark" type="button"><?php echo t('btn_iniciar_proximo'); ?></button>
             </div>
 
-            <h6 class="fw-bold">Participantes presentes</h6>
+            <h6 class="fw-bold"><?php echo t('titulo_participantes_presentes'); ?></h6>
             <div id="listaPresentes" class="d-grid gap-2 overflow-auto shadow p-3 mb-2 bg-body-tertiary rounded"
               style="height: 160px;" aria-live="polite">
             </div>
@@ -136,8 +138,16 @@ $csrf = csrf_token();
     const csrfToken = "<?php echo htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8'); ?>";
     const dataInicio = new Date("<?php echo $data_inicio_js; ?>Z".replace(" ", "T"));
 
+    const textos = {
+      confirmarEncerrarSala: <?php echo tj('confirm_encerrar_sala'); ?>,
+      erroFecharSala: <?php echo tj('erro_fechar_sala'); ?>,
+      passarVez: <?php echo tj('js_passar_vez'); ?>,
+      iniciarProximo: <?php echo tj('btn_iniciar_proximo'); ?>,
+      nenhumParticipanteAinda: <?php echo tj('texto_nenhum_participante_ainda'); ?>
+    };
+
     document.querySelector(".btn-close").addEventListener("click", function () {
-      if (!confirm("Tem certeza que deseja encerrar a sala? Isso vai apagar a sala e remover todos os participantes — não pode ser desfeito.")) {
+      if (!confirm(textos.confirmarEncerrarSala)) {
         return;
       }
 
@@ -151,7 +161,7 @@ $csrf = csrf_token();
           if (ret.trim() === "ok") {
             window.location.href = "criar.php";
           } else {
-            alert("Erro ao fechar a sala.");
+            alert(textos.erroFecharSala);
           }
         });
     });
@@ -208,20 +218,20 @@ $csrf = csrf_token();
               restanteLocal = estado.falando.restante_segundos;
             }
             document.getElementById("contadorFala").textContent = formatarMMSS(restanteLocal);
-            document.getElementById("btnProximo").textContent = "Passar a vez";
+            document.getElementById("btnProximo").textContent = textos.passarVez;
           } else {
             document.getElementById("semFalante").style.display = "block";
             document.getElementById("comFalante").style.display = "none";
             speakerAtualId = null;
             restanteLocal = null;
-            document.getElementById("btnProximo").textContent = "Iniciar fala do próximo";
+            document.getElementById("btnProximo").textContent = textos.iniciarProximo;
           }
 
           const listaPresentes = document.getElementById("listaPresentes");
           listaPresentes.innerHTML = "";
           if (estado.presentes.length === 0) {
             const vazio = document.createElement("p");
-            vazio.textContent = "Nenhum participante na sala ainda.";
+            vazio.textContent = textos.nenhumParticipanteAinda;
             listaPresentes.appendChild(vazio);
           } else {
             const idsNaFila = new Set(estado.fila.map(p => p.id_participante));
