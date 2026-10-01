@@ -1,4 +1,4 @@
-## Códigos uteis para o projeto
+## Comandos uteis para do projeto
 ```
 # primeira vez (ou depois de mudar o Dockerfile)
 docker compose up -d --build
@@ -10,7 +10,7 @@ docker compose up -d
 docker compose up -d --force-recreate proxy
 ```
 
-## Código completo para gerar um certificado autoassinado pelo openssl
+## Comando completo para gerar um certificado autoassinado pelo openssl de um ano podendo ser modificado caso nescessário
 ```
 mkdir -p nginx/certs
 
@@ -19,7 +19,7 @@ openssl req -x509 -nodes -newkey rsa:2048 \
   -out nginx/certs/selfsigned.crt \
   -days 365 \
   -subj "/CN=localhost" \
-  -addext "subjectAltName=DNS:localhost,IP:SEU_IP_LOCAL,IP:127.0.0.1"
+  -addext "subjectAltName=DNS:localhost,IP: `SEU_IP_LOCAL` ,IP:127.0.0.1"
 ```
 ## Escolhendo entre HTTP e HTTPS
 
@@ -58,7 +58,3 @@ PHPMYADMIN_PORT=8168
 | `PHPMYADMIN_PORT` | phpMyAdmin  | 8168   |
 
 Altere os valores no `.env` e recrie os containers:
-```
-sudo docker-compose up -d --force-recreate proxy phpmyadmin
-```
-As duas portas não podem ser iguais entre si nem estar em uso por outro programa no host.
