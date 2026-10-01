@@ -1,3 +1,15 @@
+## Códigos uteis para o projeto
+```
+# primeira vez (ou depois de mudar o Dockerfile)
+docker compose up -d --build
+
+# dia a dia, e depois de mudar portas ou o .env
+docker compose up -d
+
+# depois de editar arquivos do nginx
+docker compose up -d --force-recreate proxy
+```
+
 ## Código completo para gerar um certificado autoassinado pelo openssl
 ```
 mkdir -p nginx/certs
@@ -16,15 +28,12 @@ ambiente `USE_HTTPS` no arquivo `.env`:
 
 - `USE_HTTPS=true` (padrão): usa o certificado autoassinado gerado acima,
   serve em HTTPS na porta 443 e redireciona automaticamente qualquer
-  acesso HTTP (porta 8192) para HTTPS.
+  acesso HTTP (porta definida em `APP_PORT`, padrão 8192) para HTTPS.
 - `USE_HTTPS=false`: não usa certificado nenhum, serve só em HTTP na
-  porta 8192. Útil quando não é possível ou não se quer gerar o
+  porta definida em `APP_PORT` (padrão 8192). Útil quando não é possível ou não se quer gerar o
   certificado (ex.: ambiente de desenvolvimento local).
 
 Basta definir a variável no `.env` e subir/reiniciar os containers:
-```
-sudo docker-compose up -d --build --force-recreate proxy
-```
 ## Exemplo de .env para as variaveis de ambiente
 ```
 MYSQL_ROOT_PASSWORD=root_secure_password_here
@@ -37,5 +46,19 @@ USE_HTTPS=false
 PMA_USER=pi2_user
 PMA_PASSWORD=user_secure_password_here
 
-PHPMYADMIN_PORT=8192
+# Portas expostas no host (opcionais - se omitidas, valem os padrões abaixo)
+APP_PORT=8192
+PHPMYADMIN_PORT=8168
 ```
+## Customizando as portas
+
+| Variável          | Serviço     | Padrão |
+|-------------------|-------------|--------|
+| `APP_PORT`        | App (proxy) | 8192   |
+| `PHPMYADMIN_PORT` | phpMyAdmin  | 8168   |
+
+Altere os valores no `.env` e recrie os containers:
+```
+sudo docker-compose up -d --force-recreate proxy phpmyadmin
+```
+As duas portas não podem ser iguais entre si nem estar em uso por outro programa no host.
