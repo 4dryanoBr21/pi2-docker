@@ -31,6 +31,7 @@ MYSQL_ROOT_PASSWORD=root_secure_password_here
 MYSQL_DATABASE=pi2_database
 MYSQL_USER=pi2_user
 MYSQL_PASSWORD=user_secure_password_here
+
 USE_HTTPS=false
 
 PMA_USER=pi2_user
