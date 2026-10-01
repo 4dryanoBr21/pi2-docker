@@ -23,7 +23,7 @@ ambiente `USE_HTTPS` no arquivo `.env`:
 
 Basta definir a variável no `.env` e subir/reiniciar os containers:
 ```
-sudo docker-compose up -d --force-recreate proxy
+sudo docker-compose up -d --build --force-recreate proxy
 ```
 ## Exemplo de .env para as variaveis de ambiente
 ```
