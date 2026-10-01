@@ -28,3 +28,19 @@ USE_HTTPS=false
 ```
 docker compose up -d --force-recreate proxy
 ```
+## Exemplo de .env para as variaveis de ambiente
+```
+# Database Credentials
+MYSQL_ROOT_PASSWORD=root_secure_password_here
+MYSQL_DATABASE=pi2_database
+MYSQL_USER=pi2_user
+MYSQL_PASSWORD=user_secure_password_here
+USE_HTTPS=false
+
+# phpMyAdmin Credentials (can use the same database user or root)
+PMA_USER=pi2_user
+PMA_PASSWORD=user_secure_password_here
+
+# Ports and Network Configuration
+PHPMYADMIN_PORT=8192
+``
