@@ -1,13 +1,13 @@
 ## Comandos uteis para do projeto
 ```
 # primeira vez (ou depois de mudar o Dockerfile)
-docker compose up -d --build
+docker-compose up -d --build
 
 # dia a dia, e depois de mudar portas ou o .env
-docker compose up -d
+docker-compose up -d
 
 # depois de editar arquivos do nginx
-docker compose up -d --force-recreate proxy
+docker-compose up -d --force-recreate proxy
 ```
 
 ## Comando completo para gerar um certificado autoassinado pelo openssl de um ano podendo ser modificado caso nescessário
@@ -50,11 +50,3 @@ PMA_PASSWORD=user_secure_password_here
 APP_PORT=8192
 PHPMYADMIN_PORT=8168
 ```
-## Customizando as portas
-
-| Variável          | Serviço     | Padrão |
-|-------------------|-------------|--------|
-| `APP_PORT`        | App (proxy) | 8192   |
-| `PHPMYADMIN_PORT` | phpMyAdmin  | 8168   |
-
-Altere os valores no `.env` e recrie os containers:
