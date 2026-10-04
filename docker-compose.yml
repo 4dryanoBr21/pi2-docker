@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   app:
     build: .
@@ -10,28 +8,46 @@ services:
       DB_USER: ${MYSQL_USER}
       DB_PASSWORD: ${MYSQL_PASSWORD}
       DB_NAME: ${MYSQL_DATABASE}
+      TZ: UTC
     expose:
       - "80"
     volumes:
+      # Modo desenvolvimento: edita o código e recarrega a página.
+      # Para um deploy "fechado", remova esta linha: o Dockerfile já
+      # copia ./src para dentro da imagem.
       - ./src:/var/www/html
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@fsockopen('127.0.0.1', 80) ? 0 : 1);"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     networks:
       - pi2_net
 
   db:
-    image: mariadb:10.4
+    image: mariadb:10.11
     container_name: pi2_db
     restart: unless-stopped
+    command:
+      - "--character-set-server=utf8mb4"
+      - "--collation-server=utf8mb4_general_ci"
+      - "--default-time-zone=+00:00"
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      TZ: UTC
+      # Se o volume db_data foi criado com uma versão antiga do MariaDB
+      # (ex.: 10.4), atualiza as tabelas de sistema automaticamente.
+      MARIADB_AUTO_UPGRADE: "1"
     volumes:
       - db_data:/var/lib/mysql
-      - ./db-init:/docker-entrypoint-initdb.d
+      - ./db-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 5s
@@ -41,16 +57,18 @@ services:
     networks:
       - pi2_net
 
+  # phpMyAdmin só sobe quando pedido explicitamente:
+  #   docker compose --profile debug up -d phpmyadmin
+  # Fica acessível apenas na própria máquina (127.0.0.1) e SEMPRE pede
+  # usuário e senha do banco (não há mais login automático).
   phpmyadmin:
-    image: phpmyadmin:latest
+    image: phpmyadmin:5.2
     container_name: pi2_phpmyadmin
     restart: unless-stopped
     environment:
       PMA_HOST: db
-      PMA_USER: ${PMA_USER}
-      PMA_PASSWORD: ${PMA_PASSWORD}
     ports:
-      - "${PHPMYADMIN_PORT:-8168}:80"   # phpMyAdmin (padrão: 8168)
+      - "127.0.0.1:${PHPMYADMIN_PORT:-8193}:80"
     depends_on:
       - db
     networks:
@@ -62,10 +80,10 @@ services:
     restart: unless-stopped
     environment:
       # true  -> HTTPS com certificado autoassinado (porta 443) + redirect de HTTP
-      # false -> apenas HTTP, sem certificado (porta ${APP_PORT}, padrão 8192)
+      # false -> apenas HTTP, sem certificado
       USE_HTTPS: ${USE_HTTPS:-true}
     ports:
-      - "${APP_PORT:-8192}:80"   # HTTP do app (padrão: 8192) -> porta 80 interna do proxy
+      - "${HTTP_PORT:-8192}:80"   # porta HTTP externa -> 80 interna do container
       - "443:443"
     volumes:
       - ./nginx/conf-templates:/etc/nginx/conf-templates:ro
@@ -74,6 +92,11 @@ services:
     entrypoint: ["/bin/sh", "/entrypoint.sh"]
     depends_on:
       - app
+    healthcheck:
+      test: ["CMD-SHELL", "pidof nginx > /dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
     networks:
       - pi2_net
 

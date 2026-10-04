@@ -40,6 +40,7 @@ return [
     'erro_email_invalido' => 'Ingresá un e-mail válido.',
     'erro_senha_minima' => 'La contraseña debe tener al menos 8 caracteres.',
     'erro_usuario_existente' => 'Usuario o e-mail ya registrado en el sistema.',
+    'erro_usuario_sem_arroba' => 'El nombre de usuario no puede contener el carácter "@".',
     'msg_cadastro_sucesso' => 'Usuario registrado con éxito. Hacé clic <a href="login.php" class="alert-link">%s</a> para continuar',
     'msg_cadastro_sucesso_link' => 'acá',
     'erro_cadastro_bd' => 'Error al registrar en la base de datos.',
@@ -55,6 +56,7 @@ return [
     // criar.php
     'erro_preencha_todos_campos' => 'Por favor completá todos los campos.',
     'erro_codigo_formato' => 'El código de la sala debe tener de 4 a 20 caracteres, solo letras y números.',
+    'erro_tempo_invalido' => 'Ingresá un tiempo de habla válido, mayor que cero (ej.: 00:02:00).',
     'erro_sala_existente' => 'La sala ya existe.',
     'erro_preparar_verificacao' => 'Error al preparar la consulta de verificación.',
     'erro_codigo_em_uso' => 'Ese código de sala ya está en uso. Elegí otro.',
@@ -83,6 +85,7 @@ return [
     'js_passar_vez' => 'Pasar el turno',
     'titulo_participantes_presentes' => 'Participantes presentes',
     'confirm_encerrar_sala' => '¿Seguro que querés cerrar la sala? Esto va a borrar la sala y eliminar a todos los participantes — no se puede deshacer.',
+    'confirm_sair_encerra_sala' => 'Cerrar sesión va a cerrar la sala y eliminar a todos los participantes — no se puede deshacer. ¿Querés continuar?',
     'erro_fechar_sala' => 'Error al cerrar la sala.',
     'texto_nenhum_participante_ainda' => 'Todavía no hay participantes en la sala.',
 
@@ -94,6 +97,7 @@ return [
     'texto_sua_vez' => '¡Es tu turno de hablar!',
     'aria_levantar_mao' => 'Levantar la mano',
     'aria_abaixar_mao' => 'Bajar la mano',
+    'aria_encerrar_fala' => 'Terminar mi intervención y pasar la palabra',
     'texto_posicao_fila' => 'Sos el %dº de la fila (%d en total).',
     'texto_voce_sufixo' => ' (vos)',
     'erro_sair_sala' => 'Error al salir de la sala.',

@@ -1,93 +1,41 @@
 <?php
-session_start();
-include('conexao.php');
-require('csrf.php');
+// Criador passa a palavra ao próximo da fila (botão "Iniciar próximo" /
+// "Passar a vez", ou automaticamente quando o cronômetro zera).
 
-header('Content-Type: application/json; charset=utf-8');
+require_once __DIR__ . '/conexao.php';
+require_once __DIR__ . '/csrf.php';
+require_once __DIR__ . '/auth_criador.php';
+require_once __DIR__ . '/sala_helpers.php';
 
-if (!isset($_SESSION['id_criador']) || !isset($_SESSION['session_token'])) {
-    http_response_code(403);
-    echo json_encode(['erro' => 'não autenticado']);
-    exit;
+if (!criador_autenticado($mysqli)) {
+    responder_json(403, ['erro' => 'não autenticado']);
 }
 
 if (!csrf_verify($_POST['csrf_token'] ?? null)) {
-    http_response_code(403);
-    echo json_encode(['erro' => 'token inválido']);
-    exit;
+    responder_json(403, ['erro' => 'token inválido']);
 }
 
-$stmt_token = $mysqli->prepare("SELECT session_token FROM criador WHERE id_criador = ?");
-$stmt_token->bind_param("i", $_SESSION['id_criador']);
-$stmt_token->execute();
-$row_token = $stmt_token->get_result()->fetch_assoc();
-$stmt_token->close();
-
-if (!$row_token || !hash_equals((string) $row_token['session_token'], (string) $_SESSION['session_token'])) {
-    http_response_code(403);
-    echo json_encode(['erro' => 'sessão invalidada']);
-    exit;
+$id_sala = (int) ($_POST['id_sala'] ?? 0);
+if ($id_sala <= 0) {
+    responder_json(400, ['erro' => 'id_sala não informado']);
 }
 
-if (!isset($_POST['id_sala'])) {
-    http_response_code(400);
-    echo json_encode(['erro' => 'id_sala não informado']);
-    exit;
+if (!criador_eh_dono_da_sala($mysqli, $id_sala)) {
+    responder_json(403, ['erro' => 'sem permissão para esta sala']);
 }
 
-$id_sala = intval($_POST['id_sala']);
+criador_registrar_atividade($mysqli);
 
-$stmt_dono = $mysqli->prepare("SELECT 1 FROM criador WHERE id_criador = ? AND fk_sala_criada = ?");
-$stmt_dono->bind_param("ii", $_SESSION['id_criador'], $id_sala);
-$stmt_dono->execute();
-$eh_dono = $stmt_dono->get_result()->num_rows > 0;
-$stmt_dono->close();
+// id do orador que o cliente acha que está falando (0 = ninguém). O servidor
+// só avança se isso bater com a realidade — veja avancar_fala_sala().
+$esperado = isset($_POST['falando_atual']) ? max(0, (int) $_POST['falando_atual']) : null;
 
-if (!$eh_dono) {
-    http_response_code(403);
-    echo json_encode(['erro' => 'sem permissão para esta sala']);
-    exit;
-}
+session_write_close();
 
-$stmt_touch = $mysqli->prepare("UPDATE criador SET session_last_activity = NOW() WHERE id_criador = ?");
-$stmt_touch->bind_param("i", $_SESSION['id_criador']);
-$stmt_touch->execute();
-$stmt_touch->close();
+$resultado = avancar_fala_sala($mysqli, $id_sala, $esperado);
 
-$stmt0 = $mysqli->prepare("UPDATE sala SET fk_participante_falando = NULL, fala_inicio = NULL WHERE id_sala = ?");
-$stmt0->bind_param("i", $id_sala);
-$stmt0->execute();
-$stmt0->close();
-
-$stmt = $mysqli->prepare("
-    SELECT id_participante
-    FROM participante
-    WHERE fk_sala_atual = ? AND data_hora_solicitacao IS NOT NULL
-    ORDER BY data_hora_solicitacao ASC
-    LIMIT 1
-");
-$stmt->bind_param("i", $id_sala);
-$stmt->execute();
-$result = $stmt->get_result();
-
-if ($result->num_rows === 0) {
-    $stmt->close();
-    echo json_encode(['ok' => true, 'proximo' => null]);
-    exit;
-}
-
-$proximo = $result->fetch_assoc();
-$stmt->close();
-$id_participante = (int) $proximo['id_participante'];
-
-$stmt2 = $mysqli->prepare("UPDATE sala SET fk_participante_falando = ?, fala_inicio = NOW() WHERE id_sala = ?");
-$stmt2->bind_param("ii", $id_participante, $id_sala);
-$stmt2->execute();
-$stmt2->close();
-
-$stmt3 = $mysqli->prepare("UPDATE participante SET data_hora_solicitacao = NULL WHERE id_participante = ?");
-$stmt3->bind_param("i", $id_participante);
-$stmt3->execute();
-$stmt3->close();
-
-echo json_encode(['ok' => true, 'proximo' => $id_participante]);
+responder_json(200, [
+    'ok' => true,
+    'avancou' => $resultado['avancou'],
+    'proximo' => $resultado['proximo'],
+]);

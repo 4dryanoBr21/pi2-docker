@@ -1,77 +1,49 @@
 <?php
-include('../functions/conexao.php');
-require('../functions/csrf.php');
-require('../functions/idioma.php');
+require_once __DIR__ . '/../functions/conexao.php';
+require_once __DIR__ . '/../functions/csrf.php';
+require_once __DIR__ . '/../functions/idioma.php';
+require_once __DIR__ . '/../functions/util.php';
+require_once __DIR__ . '/../functions/auth_criador.php';
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-$autenticado = false;
-
-if (isset($_SESSION['id_criador']) && isset($_SESSION['session_token'])) {
-    $stmt_auth = $mysqli->prepare("SELECT session_token FROM criador WHERE id_criador = ?");
-    if ($stmt_auth) {
-        $stmt_auth->bind_param("i", $_SESSION['id_criador']);
-        $stmt_auth->execute();
-        $res_auth = $stmt_auth->get_result()->fetch_assoc();
-        $stmt_auth->close();
-
-        if ($res_auth && $res_auth['session_token'] === $_SESSION['session_token']) {
-            $autenticado = true;
-        }
-    }
-}
-
-if (!$autenticado) {
+if (!criador_autenticado($mysqli)) {
     header('Location: login.php');
     exit();
 }
 
-if (!isset($_GET['id_sala'])) {
-  die(t('erro_sala_nao_especificada', t('texto_voltar')));
+$id_sala = (int) ($_GET['id_sala'] ?? 0);
+
+if ($id_sala <= 0) {
+    die(t('erro_sala_nao_especificada', t('texto_voltar')));
 }
 
-$id_sala = intval($_GET['id_sala']);
-
-$stmt_dono = $mysqli->prepare("SELECT 1 FROM criador WHERE id_criador = ? AND fk_sala_criada = ?");
-$stmt_dono->bind_param("ii", $_SESSION['id_criador'], $id_sala);
-$stmt_dono->execute();
-$eh_dono = $stmt_dono->get_result()->num_rows > 0;
-$stmt_dono->close();
-
-if (!$eh_dono) {
+if (!criador_eh_dono_da_sala($mysqli, $id_sala)) {
     die(t('erro_sem_permissao', t('texto_voltar')));
 }
 
-$stmt_touch = $mysqli->prepare("UPDATE criador SET session_last_activity = NOW() WHERE id_criador = ?");
-$stmt_touch->bind_param("i", $_SESSION['id_criador']);
-$stmt_touch->execute();
-$stmt_touch->close();
+criador_registrar_atividade($mysqli);
 
-$stmt_inicio = $mysqli->prepare("UPDATE sala SET data_inicio = NOW() WHERE id_sala = ? AND data_inicio IS NULL");
-$stmt_inicio->bind_param("i", $id_sala);
-$stmt_inicio->execute();
-$stmt_inicio->close();
+// marca o início da reunião na primeira vez que o criador abre a sala
+db_exec($mysqli, "UPDATE sala SET data_inicio = NOW() WHERE id_sala = ? AND data_inicio IS NULL", "i", $id_sala);
 
-$stmt_sala = $mysqli->prepare("SELECT * FROM sala WHERE id_sala = ?");
-$stmt_sala->bind_param("i", $id_sala);
-$stmt_sala->execute();
-$row = $stmt_sala->get_result()->fetch_assoc();
-$stmt_sala->close();
+$row = db_fetch_one(
+    $mysqli,
+    "SELECT nome_sala, codigo_sala, tempo_de_fala FROM sala WHERE id_sala = ?",
+    "i",
+    $id_sala
+);
 
-if ($row) {
-  $nome_sala = htmlspecialchars($row['nome_sala']);
-  $codigo_sala = htmlspecialchars($row['codigo_sala']);
-  $tempo_fala = htmlspecialchars($row['tempo_de_fala']);
-  $data_inicio_js = htmlspecialchars($row['data_inicio']);
-} else {
-  die(t('erro_sala_nao_encontrada', t('texto_voltar')));
+if ($row === null) {
+    die(t('erro_sala_nao_encontrada', t('texto_voltar')));
 }
+
+$nome_sala = htmlspecialchars($row['nome_sala'], ENT_QUOTES, 'UTF-8');
+$codigo_sala = htmlspecialchars($row['codigo_sala'], ENT_QUOTES, 'UTF-8');
+$tempo_fala = htmlspecialchars($row['tempo_de_fala'], ENT_QUOTES, 'UTF-8');
 
 $csrf = csrf_token();
 ?>
 
+<!DOCTYPE html>
 <html lang="<?php echo $idioma_atual === 'es' ? 'es' : 'pt-BR'; ?>">
 
 <head>
@@ -90,7 +62,11 @@ $csrf = csrf_token();
 
 <body>
   <?php idioma_switch_html(); ?>
-  <a href="../functions/logout.php" class="btn btn-sm btn-outline-dark" style="position:absolute; top:16px; right:16px;"><?php echo t('btn_sair'); ?></a>
+  <form id="formLogout" action="../functions/logout.php" method="POST" class="d-none">
+    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8'); ?>">
+  </form>
+  <button type="button" id="btnSairConta" class="btn btn-sm btn-outline-dark"
+    style="position:absolute; top:16px; right:16px;"><?php echo t('btn_sair'); ?></button>
   <div class="container">
     <div class="row">
       <div class="col-md-3"></div>
@@ -99,7 +75,7 @@ $csrf = csrf_token();
           <img class="logo-black rounded" src="../img/MI_legenda.png" alt="<?php echo te('alt_logo'); ?>">
         </div>
         <div class="card">
-          <button type="button" class="btn-close" aria-label="<?php echo te('aria_encerrar_sala'); ?>"></button>
+          <button type="button" class="btn-close" id="btnEncerrarSala" aria-label="<?php echo te('aria_encerrar_sala'); ?>"></button>
           <div class="card-body">
             <h2 class="text-center fw-bold">
               <?php echo $nome_sala; ?>
@@ -133,20 +109,42 @@ $csrf = csrf_token();
     </div>
   </div>
 
+  <script src="../assets/app.js"></script>
   <script>
-    const idSala = <?php echo $id_sala; ?>;
+    const idSala = <?php echo (int) $id_sala; ?>;
     const csrfToken = "<?php echo htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8'); ?>";
-    const dataInicio = new Date("<?php echo $data_inicio_js; ?>Z".replace(" ", "T"));
 
     const textos = {
       confirmarEncerrarSala: <?php echo tj('confirm_encerrar_sala'); ?>,
+      confirmarSairConta: <?php echo tj('confirm_sair_encerra_sala'); ?>,
       erroFecharSala: <?php echo tj('erro_fechar_sala'); ?>,
       passarVez: <?php echo tj('js_passar_vez'); ?>,
       iniciarProximo: <?php echo tj('btn_iniciar_proximo'); ?>,
       nenhumParticipanteAinda: <?php echo tj('texto_nenhum_participante_ainda'); ?>
     };
 
-    document.querySelector(".btn-close").addEventListener("click", function () {
+    // O SERVIDOR é a única fonte da verdade sobre o tempo. Aqui guardamos
+    // apenas "em que instante do relógio deste navegador" cada contagem
+    // começou/termina e recalculamos a tela a partir disso. Assim, se o
+    // navegador atrasar os timers (aba em segundo plano), o valor mostrado
+    // continua certo assim que a aba volta — antes o cronômetro "andava
+    // devagar" porque descontava 1 segundo por tick, qualquer que fosse o
+    // tempo real decorrido.
+    const TOLERANCIA_MS = 1500;        // diferença aceitável antes de ressincronizar
+    let inicioReuniaoMs = null;        // instante (ms) em que a reunião começou
+    let fimFalaMs = null;              // instante (ms) em que a fala atual termina
+    let speakerAtualId = null;
+    let avancando = false;
+    let ultimoAvancoMs = 0;
+
+    // "Sair": apaga a sala junto, então pede confirmação (e agora é POST + CSRF)
+    document.getElementById("btnSairConta").addEventListener("click", function () {
+      if (confirm(textos.confirmarSairConta)) {
+        document.getElementById("formLogout").submit();
+      }
+    });
+
+    document.getElementById("btnEncerrarSala").addEventListener("click", function () {
       if (!confirm(textos.confirmarEncerrarSala)) {
         return;
       }
@@ -163,41 +161,53 @@ $csrf = csrf_token();
           } else {
             alert(textos.erroFecharSala);
           }
-        });
+        })
+        .catch(() => alert(textos.erroFecharSala));
     });
 
-    function formatarMMSS(totalSegundos) {
-      const capado = Math.min(totalSegundos, 59 * 60 + 59); // no máximo 59:59
-      const m = Math.floor(capado / 60).toString().padStart(2, "0");
-      const s = Math.floor(capado % 60).toString().padStart(2, "0");
-      return `${m}:${s}`;
-    }
-
-    let restanteLocal = null;
-    let avancandoAutomaticamente = false;
-    let speakerAtualId = null;
-
     function avancarFala() {
-      if (avancandoAutomaticamente) return;
-      avancandoAutomaticamente = true;
+      const agora = Date.now();
+      // evita duplo clique e martelar o servidor se algo falhar
+      if (avancando || agora - ultimoAvancoMs < 1500) return;
+      avancando = true;
+      ultimoAvancoMs = agora;
 
       const form = new FormData();
       form.append("id_sala", idSala);
       form.append("csrf_token", csrfToken);
+      // diz ao servidor QUEM acreditamos estar falando: se já mudou (outro
+      // clique, o próprio participante encerrou...), ele não avança de novo
+      // e ninguém é pulado
+      form.append("falando_atual", speakerAtualId === null ? 0 : speakerAtualId);
 
       fetch("../functions/avancar_fala.php", { method: "POST", body: form })
         .then(res => res.json())
         .then(() => {
-          avancandoAutomaticamente = false;
+          avancando = false;
           atualizarEstado();
         })
-        .catch(() => { avancandoAutomaticamente = false; });
+        .catch(() => { avancando = false; });
     }
 
     document.getElementById("btnProximo").addEventListener("click", avancarFala);
 
+    function desenharRelogios() {
+      if (inicioReuniaoMs !== null) {
+        const decorrido = Math.floor((Date.now() - inicioReuniaoMs) / 1000);
+        document.getElementById("tempoReuniao").textContent = MI.formatarTempo(decorrido);
+      }
+
+      if (fimFalaMs !== null) {
+        const restante = Math.max(0, Math.ceil((fimFalaMs - Date.now()) / 1000));
+        document.getElementById("contadorFala").textContent = MI.formatarTempo(restante);
+        if (restante === 0) {
+          avancarFala();
+        }
+      }
+    }
+
     function atualizarEstado() {
-      fetch("../functions/estado_sala.php?id_sala=" + idSala)
+      fetch("../functions/estado_sala.php?id_sala=" + idSala, { cache: "no-store" })
         .then(res => res.json())
         .then(estado => {
           if (estado.erro) {
@@ -205,67 +215,50 @@ $csrf = csrf_token();
             return;
           }
 
+          const agora = Date.now();
+
+          const novoInicio = agora - estado.reuniao_segundos * 1000;
+          if (inicioReuniaoMs === null || Math.abs(novoInicio - inicioReuniaoMs) > TOLERANCIA_MS) {
+            inicioReuniaoMs = novoInicio;
+          }
+
           if (estado.falando) {
             document.getElementById("semFalante").style.display = "none";
             document.getElementById("comFalante").style.display = "block";
             document.getElementById("nomeFalante").textContent = estado.falando.nome;
 
-            // só resincroniza do servidor quando o orador muda (ou na primeira
-            // vez) — evita que um poll periódico "reinicie" visualmente o
-            // cronômetro de quem já está contando corretamente no cliente
-            if (speakerAtualId !== estado.falando.id_participante) {
+            // Ressincroniza quando o orador muda OU quando o relógio local
+            // se afastou do servidor além da tolerância. Pequenas variações
+            // (latência da rede) não mexem no cronômetro na tela.
+            const novoFim = agora + estado.falando.restante_segundos * 1000;
+            if (speakerAtualId !== estado.falando.id_participante || fimFalaMs === null
+              || Math.abs(novoFim - fimFalaMs) > TOLERANCIA_MS) {
               speakerAtualId = estado.falando.id_participante;
-              restanteLocal = estado.falando.restante_segundos;
+              fimFalaMs = novoFim;
             }
-            document.getElementById("contadorFala").textContent = formatarMMSS(restanteLocal);
             document.getElementById("btnProximo").textContent = textos.passarVez;
           } else {
             document.getElementById("semFalante").style.display = "block";
             document.getElementById("comFalante").style.display = "none";
             speakerAtualId = null;
-            restanteLocal = null;
+            fimFalaMs = null;
             document.getElementById("btnProximo").textContent = textos.iniciarProximo;
           }
 
-          const listaPresentes = document.getElementById("listaPresentes");
-          listaPresentes.innerHTML = "";
-          if (estado.presentes.length === 0) {
-            const vazio = document.createElement("p");
-            vazio.textContent = textos.nenhumParticipanteAinda;
-            listaPresentes.appendChild(vazio);
-          } else {
-            const idsNaFila = new Set(estado.fila.map(p => p.id_participante));
-            estado.presentes.forEach(p => {
-              const item = document.createElement("p");
-              let marcador = "";
-              if (estado.falando && estado.falando.id_participante === p.id_participante) {
-                marcador = " 🎙️";
-              } else if (idsNaFila.has(p.id_participante)) {
-                marcador = " 🤚";
-              }
-              item.textContent = p.nome + marcador;
-              listaPresentes.appendChild(item);
-            });
-          }
+          MI.renderizarPresentes(document.getElementById("listaPresentes"), estado, {
+            textoVazio: textos.nenhumParticipanteAinda
+          });
+
+          desenharRelogios();
         })
         .catch(err => console.error("Erro ao buscar estado da sala:", err));
     }
 
-    setInterval(() => {
-      const decorrido = Math.floor((new Date() - dataInicio) / 1000);
-      document.getElementById("tempoReuniao").textContent = formatarMMSS(Math.max(0, decorrido));
-
-      if (restanteLocal !== null) {
-        restanteLocal = Math.max(0, restanteLocal - 1);
-        document.getElementById("contadorFala").textContent = formatarMMSS(restanteLocal);
-        if (restanteLocal === 0) {
-          avancarFala();
-        }
-      }
-    }, 1000);
+    // redesenha 4x por segundo a partir dos instantes guardados acima
+    setInterval(desenharRelogios, 250);
 
     function verificarSessao() {
-      fetch("../functions/verifica_sessao.php")
+      fetch("../functions/verifica_sessao.php", { cache: "no-store" })
         .then(res => res.json())
         .then(estado => {
           if (!estado.valido) {

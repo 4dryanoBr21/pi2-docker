@@ -1,51 +1,33 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-include("../functions/conexao.php");
-require("../functions/csrf.php");
-require("../functions/idioma.php");
+require_once __DIR__ . '/../functions/conexao.php';
+require_once __DIR__ . '/../functions/csrf.php';
+require_once __DIR__ . '/../functions/idioma.php';
+require_once __DIR__ . '/../functions/util.php';
+require_once __DIR__ . '/../functions/auth_criador.php';
 
-$autenticado = false;
-
-if (isset($_SESSION['id_criador']) && isset($_SESSION['session_token'])) {
-    $stmt_auth = $mysqli->prepare("SELECT session_token FROM criador WHERE id_criador = ?");
-    if ($stmt_auth) {
-        $stmt_auth->bind_param("i", $_SESSION['id_criador']);
-        $stmt_auth->execute();
-        $res_auth = $stmt_auth->get_result()->fetch_assoc();
-        $stmt_auth->close();
-
-        if ($res_auth && $res_auth['session_token'] === $_SESSION['session_token']) {
-            $autenticado = true;
-        }
-    }
-}
-
-if (!$autenticado) {
-    $_SESSION = array();
-    if (ini_get("session.use_cookies")) {
-        $params = session_get_cookie_params();
-        setcookie(
-            session_name(),
-            '',
-            time() - 42000,
-            $params["path"],
-            $params["domain"],
-            $params["secure"],
-            $params["httponly"]
-        );
-    }
-    session_destroy();
-
+if (!criador_autenticado($mysqli)) {
+    destruir_sessao();
     header('Location: login.php');
     exit();
 }
 
-$stmt_touch = $mysqli->prepare("UPDATE criador SET session_last_activity = NOW() WHERE id_criador = ?");
-$stmt_touch->bind_param("i", $_SESSION['id_criador']);
-$stmt_touch->execute();
-$stmt_touch->close();
+criador_registrar_atividade($mysqli);
+
+// Já existe uma sala aberta deste criador? (voltou pelo botão "voltar" do
+// navegador, ou fechou a aba e entrou de novo.) Em vez de criar outra e
+// deixar a anterior órfã — com participantes dentro —, volta para ela.
+// Para criar uma nova, é só usar "Encerrar sala" antes.
+$sala_aberta = db_fetch_one(
+    $mysqli,
+    "SELECT fk_sala_criada FROM criador WHERE id_criador = ? AND fk_sala_criada IS NOT NULL",
+    "i",
+    (int) $_SESSION['id_criador']
+);
+
+if ($sala_aberta !== null) {
+    header('Location: criador.php?id_sala=' . (int) $sala_aberta['fk_sala_criada']);
+    exit();
+}
 
 function gerar_codigo_sala_aleatorio()
 {
@@ -69,69 +51,80 @@ if (isset($_POST['submit'])) {
     if (!csrf_verify($_POST['csrf_token'] ?? null)) {
         $erro = t('erro_sessao_expirada');
     } else {
-        $nome_sala = trim($_POST['nome'] ?? '');
-        $tempo = trim($_POST['tempo'] ?? '');
-        $codigo_sala = trim($_POST['codigo'] ?? '');
+        $nome_sala = post_texto('nome');
+        $tempo = post_texto('tempo');
+        $codigo_sala = post_texto('codigo');
+
+        // Valida o tempo de fala no SERVIDOR (o <input type="time"> do
+        // navegador não é garantia): aceita HH:MM ou HH:MM:SS, exige tempo
+        // maior que zero e normaliza para HH:MM:SS.
+        $tempo_normalizado = null;
+        if (preg_match('/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/', $tempo, $mt)) {
+            $horas = (int) $mt[1];
+            $minutos = (int) $mt[2];
+            $segundos = isset($mt[3]) ? (int) $mt[3] : 0;
+
+            if ($horas < 24 && $minutos < 60 && $segundos < 60
+                && ($horas * 3600 + $minutos * 60 + $segundos) > 0) {
+                $tempo_normalizado = sprintf('%02d:%02d:%02d', $horas, $minutos, $segundos);
+            }
+        }
 
         if ($nome_sala === '' || $tempo === '' || $codigo_sala === '') {
             $erro = t('erro_preencha_todos_campos');
+        } elseif (mb_strlen($nome_sala) > 100) {
+            $erro = t('erro_nome_longo');
         } elseif (!preg_match('/^[A-Za-z0-9]{4,20}$/', $codigo_sala)) {
             $erro = t('erro_codigo_formato');
+        } elseif ($tempo_normalizado === null) {
+            $erro = t('erro_tempo_invalido');
         } else {
-            $stmt_check = $mysqli->prepare("SELECT id_sala FROM sala WHERE nome_sala = ?");
-            if ($stmt_check) {
-                $stmt_check->bind_param("s", $nome_sala);
-                $stmt_check->execute();
-                $result_check = $stmt_check->get_result();
-
-                if ($result_check && $result_check->num_rows > 0) {
+            try {
+                if (db_fetch_one($mysqli, "SELECT id_sala FROM sala WHERE nome_sala = ?", "s", $nome_sala) !== null) {
                     $erro = t('erro_sala_existente');
-                }
-                $stmt_check->close();
-            } else {
-                $erro = t('erro_preparar_verificacao');
-            }
-
-            if (empty($erro)) {
-                $stmt_check_codigo = $mysqli->prepare("SELECT id_sala FROM sala WHERE codigo_sala = ?");
-                if ($stmt_check_codigo) {
-                    $stmt_check_codigo->bind_param("s", $codigo_sala);
-                    $stmt_check_codigo->execute();
-                    $result_check_codigo = $stmt_check_codigo->get_result();
-
-                    if ($result_check_codigo && $result_check_codigo->num_rows > 0) {
-                        $erro = t('erro_codigo_em_uso');
-                    }
-                    $stmt_check_codigo->close();
+                } elseif (db_fetch_one($mysqli, "SELECT id_sala FROM sala WHERE codigo_sala = ?", "s", $codigo_sala) !== null) {
+                    $erro = t('erro_codigo_em_uso');
                 } else {
-                    $erro = t('erro_preparar_verificacao');
-                }
-            }
+                    // sala + vínculo com o criador numa transação: nunca fica
+                    // uma sala "solta" se o segundo passo falhar
+                    $mysqli->begin_transaction();
+                    try {
+                        db_exec(
+                            $mysqli,
+                            "INSERT INTO sala (nome_sala, codigo_sala, tempo_de_fala) VALUES (?, ?, ?)",
+                            "sss",
+                            $nome_sala,
+                            $codigo_sala,
+                            $tempo_normalizado
+                        );
+                        $id_sala = (int) $mysqli->insert_id;
 
-            if (empty($erro)) {
-                $stmt = $mysqli->prepare("INSERT INTO sala (nome_sala, codigo_sala, tempo_de_fala) VALUES (?, ?, ?)");
-                if ($stmt === false) {
-                    $erro = t('erro_interno_tente_novamente');
-                } else {
-                    $stmt->bind_param("sss", $nome_sala, $codigo_sala, $tempo);
-                    if ($stmt->execute()) {
-                        $id_sala = $mysqli->insert_id;
-                        $stmt->close();
+                        db_exec(
+                            $mysqli,
+                            "UPDATE criador SET fk_sala_criada = ? WHERE id_criador = ?",
+                            "ii",
+                            $id_sala,
+                            (int) $_SESSION['id_criador']
+                        );
 
-                        $update = $mysqli->prepare("UPDATE criador SET fk_sala_criada = ? WHERE id_criador = ?");
-                        if ($update) {
-                            $update->bind_param('ii', $id_sala, $_SESSION['id_criador']);
-                            $update->execute();
-                            $update->close();
-                        }
-
-                        $_SESSION['nome_sala'] = $nome_sala;
-                        header("Location: criador.php?id_sala=$id_sala");
-                        exit();
-                    } else {
-                        $erro = t('erro_criar_sala');
-                        $stmt->close();
+                        $mysqli->commit();
+                    } catch (Throwable $e) {
+                        $mysqli->rollback();
+                        throw $e;
                     }
+
+                    $_SESSION['nome_sala'] = $nome_sala;
+                    header("Location: criador.php?id_sala=" . $id_sala);
+                    exit();
+                }
+            } catch (mysqli_sql_exception $e) {
+                if ($e->getCode() === 1062) {
+                    // o UNIQUE de sala.codigo_sala pegou uma corrida: outra
+                    // sala com o mesmo código foi criada no mesmo instante
+                    $erro = t('erro_codigo_em_uso');
+                } else {
+                    error_log('criar.php: ' . $e->getMessage());
+                    $erro = t('erro_criar_sala');
                 }
             }
         }
@@ -139,6 +132,7 @@ if (isset($_POST['submit'])) {
 }
 ?>
 
+<!DOCTYPE html>
 <html lang="<?php echo $idioma_atual === 'es' ? 'es' : 'pt-BR'; ?>">
 
 <head>
@@ -157,6 +151,9 @@ if (isset($_POST['submit'])) {
 
 <body>
     <?php idioma_switch_html(); ?>
+    <form id="formLogout" action="../functions/logout.php" method="POST" class="d-none">
+        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
+    </form>
     <div class="container">
         <div class="row">
             <div class="col-md-4"></div>
@@ -208,8 +205,9 @@ if (isset($_POST['submit'])) {
         const textoCopiarCodigoOriginal = <?php echo tj('btn_copiar_codigo'); ?>;
         const textoCopiado = <?php echo tj('texto_copiado'); ?>;
 
+        // "Sair" agora é um POST com token CSRF (antes era um link GET)
         document.getElementById("btnSair").addEventListener("click", () => {
-            window.open("../functions/logout.php", "_self");
+            document.getElementById("formLogout").submit();
         });
 
         document.getElementById("copiarCodigo").addEventListener("click", () => {

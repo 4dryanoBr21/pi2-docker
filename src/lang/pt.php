@@ -40,6 +40,7 @@ return [
     'erro_email_invalido' => 'Digite um e-mail válido.',
     'erro_senha_minima' => 'A senha precisa ter pelo menos 8 caracteres.',
     'erro_usuario_existente' => 'Usuário ou E-mail já cadastrado no sistema.',
+    'erro_usuario_sem_arroba' => 'O nome de usuário não pode conter o caractere "@".',
     'msg_cadastro_sucesso' => 'Usuário cadastrado com sucesso. Clique em <a href="login.php" class="alert-link">%s</a> para continuar',
     'msg_cadastro_sucesso_link' => 'aqui',
     'erro_cadastro_bd' => 'Erro ao realizar o cadastro no banco de dados.',
@@ -55,6 +56,7 @@ return [
     // criar.php
     'erro_preencha_todos_campos' => 'Por favor preencha todos os campos.',
     'erro_codigo_formato' => 'O código da sala deve ter de 4 a 20 caracteres, apenas letras e números.',
+    'erro_tempo_invalido' => 'Informe um tempo de fala válido, maior que zero (ex.: 00:02:00).',
     'erro_sala_existente' => 'Sala já existente.',
     'erro_preparar_verificacao' => 'Erro ao preparar consulta de verificação.',
     'erro_codigo_em_uso' => 'Esse código de sala já está em uso. Escolha outro.',
@@ -83,6 +85,7 @@ return [
     'js_passar_vez' => 'Passar a vez',
     'titulo_participantes_presentes' => 'Participantes presentes',
     'confirm_encerrar_sala' => 'Tem certeza que deseja encerrar a sala? Isso vai apagar a sala e remover todos os participantes — não pode ser desfeito.',
+    'confirm_sair_encerra_sala' => 'Sair da conta vai encerrar a sala e remover todos os participantes — não pode ser desfeito. Deseja continuar?',
     'erro_fechar_sala' => 'Erro ao fechar a sala.',
     'texto_nenhum_participante_ainda' => 'Nenhum participante na sala ainda.',
 
@@ -94,6 +97,7 @@ return [
     'texto_sua_vez' => 'É a sua vez de falar!',
     'aria_levantar_mao' => 'Levantar a mão',
     'aria_abaixar_mao' => 'Abaixar a mão',
+    'aria_encerrar_fala' => 'Encerrar minha fala e passar a palavra',
     'texto_posicao_fila' => 'Você é o %dº da fila (%d no total).',
     'texto_voce_sufixo' => ' (você)',
     'erro_sair_sala' => 'Erro ao sair da sala.',

@@ -1,142 +1,71 @@
--- phpMyAdmin SQL Dump
--- version 5.2.3
--- https://www.phpmyadmin.net/
---
--- Host: db
--- Tempo de geração: 27/07/2026 às 01:11
--- Versão do servidor: 10.4.34-MariaDB-1:10.4.34+maria~ubu2004
--- Versão do PHP: 8.3.32
+-- ME INSCREVO — esquema inicial do banco.
+-- Executado automaticamente pelo MariaDB SOMENTE na primeira criação do
+-- volume (docker-entrypoint-initdb.d), dentro do banco definido em
+-- MYSQL_DATABASE. Para bancos já existentes, use db-migrations/.
 
-SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
-START TRANSACTION;
-SET time_zone = "+00:00";
-
-
-/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
-/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!40101 SET NAMES utf8mb4 */;
-
---
--- Banco de dados: `projetomi`
---
+SET NAMES utf8mb4;
 
 -- --------------------------------------------------------
-
---
--- Estrutura para tabela `criador`
---
-
-CREATE TABLE `criador` (
-  `id_criador` int(11) NOT NULL,
-  `nome_criador` varchar(100) DEFAULT NULL,
-  `email` varchar(100) DEFAULT NULL,
-  `senha` varchar(100) DEFAULT NULL,
-  `fk_sala_criada` int(11) DEFAULT NULL,
-  `session_token` varchar(255) DEFAULT NULL,
-  `session_last_activity` datetime DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
+-- Tabela `sala`
 -- --------------------------------------------------------
-
---
--- Estrutura para tabela `participante`
---
-
-CREATE TABLE `participante` (
-  `id_participante` int(11) NOT NULL,
-  `nome_participante` varchar(100) DEFAULT NULL,
-  `fk_sala_atual` int(11) DEFAULT NULL,
-  `data_hora_solicitacao` datetime DEFAULT NULL,
-  `ultima_atividade` datetime DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Estrutura para tabela `sala`
---
-
 CREATE TABLE `sala` (
-  `id_sala` int(11) NOT NULL,
+  `id_sala` int(11) NOT NULL AUTO_INCREMENT,
   `nome_sala` varchar(100) DEFAULT NULL,
   `codigo_sala` varchar(100) DEFAULT NULL,
   `tempo_de_fala` time DEFAULT NULL,
   `data_inicio` datetime DEFAULT NULL,
   `fk_participante_falando` int(11) DEFAULT NULL,
-  `fala_inicio` datetime DEFAULT NULL
+  `fala_inicio` datetime DEFAULT NULL,
+  PRIMARY KEY (`id_sala`),
+  -- o código é a "chave de entrada" da sala: tem que ser único de verdade
+  -- (não só por checagem na aplicação, que falha com requisições simultâneas)
+  UNIQUE KEY `uq_sala_codigo` (`codigo_sala`),
+  KEY `sala_ibfk_falando` (`fk_participante_falando`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Índices para tabelas despejadas
---
+-- --------------------------------------------------------
+-- Tabela `participante`
+-- (data_hora_solicitacao com milissegundos: desempata quem levantou a mão
+--  no mesmo segundo)
+-- --------------------------------------------------------
+CREATE TABLE `participante` (
+  `id_participante` int(11) NOT NULL AUTO_INCREMENT,
+  `nome_participante` varchar(100) DEFAULT NULL,
+  `fk_sala_atual` int(11) DEFAULT NULL,
+  `data_hora_solicitacao` datetime(3) DEFAULT NULL,
+  `ultima_atividade` datetime DEFAULT NULL,
+  PRIMARY KEY (`id_participante`),
+  KEY `fk_sala_atual` (`fk_sala_atual`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Índices de tabela `criador`
---
-ALTER TABLE `criador`
-  ADD PRIMARY KEY (`id_criador`),
-  ADD KEY `fk_sala_criada` (`fk_sala_criada`);
+-- --------------------------------------------------------
+-- Tabela `criador`
+-- (senha em varchar(255): é o tamanho recomendado para password_hash(),
+--  que pode gerar hashes maiores que 100 caracteres no futuro)
+-- --------------------------------------------------------
+CREATE TABLE `criador` (
+  `id_criador` int(11) NOT NULL AUTO_INCREMENT,
+  `nome_criador` varchar(100) DEFAULT NULL,
+  `email` varchar(100) DEFAULT NULL,
+  `senha` varchar(255) DEFAULT NULL,
+  `fk_sala_criada` int(11) DEFAULT NULL,
+  `session_token` varchar(255) DEFAULT NULL,
+  `session_last_activity` datetime DEFAULT NULL,
+  PRIMARY KEY (`id_criador`),
+  UNIQUE KEY `uq_criador_email` (`email`),
+  UNIQUE KEY `uq_criador_nome` (`nome_criador`),
+  KEY `fk_sala_criada` (`fk_sala_criada`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Índices de tabela `participante`
---
-ALTER TABLE `participante`
-  ADD PRIMARY KEY (`id_participante`),
-  ADD KEY `fk_sala_atual` (`fk_sala_atual`);
-
---
--- Índices de tabela `sala`
---
-ALTER TABLE `sala`
-  ADD PRIMARY KEY (`id_sala`),
-  ADD KEY `sala_ibfk_falando` (`fk_participante_falando`);
-
---
--- AUTO_INCREMENT para tabelas despejadas
---
-
---
--- AUTO_INCREMENT de tabela `criador`
---
-ALTER TABLE `criador`
-  MODIFY `id_criador` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
-
---
--- AUTO_INCREMENT de tabela `participante`
---
-ALTER TABLE `participante`
-  MODIFY `id_participante` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT de tabela `sala`
---
-ALTER TABLE `sala`
-  MODIFY `id_sala` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- Restrições para tabelas despejadas
---
-
---
--- Restrições para tabelas `criador`
---
+-- --------------------------------------------------------
+-- Chaves estrangeiras (sala <-> participante é circular, por isso ficam
+-- por último)
+-- --------------------------------------------------------
 ALTER TABLE `criador`
   ADD CONSTRAINT `criador_ibfk_1` FOREIGN KEY (`fk_sala_criada`) REFERENCES `sala` (`id_sala`);
 
---
--- Restrições para tabelas `participante`
---
 ALTER TABLE `participante`
   ADD CONSTRAINT `participante_ibfk_1` FOREIGN KEY (`fk_sala_atual`) REFERENCES `sala` (`id_sala`);
 
---
--- Restrições para tabelas `sala`
---
 ALTER TABLE `sala`
   ADD CONSTRAINT `sala_ibfk_falando` FOREIGN KEY (`fk_participante_falando`) REFERENCES `participante` (`id_participante`);
-COMMIT;
-
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;

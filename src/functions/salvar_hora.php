@@ -1,9 +1,21 @@
 <?php
-include('conexao.php');
-require('csrf.php');
+// Botão da mão do participante. Comportamento conforme a situação:
+//   - mão abaixada  -> levanta (entra na fila, marcando a hora com milissegundos)
+//   - mão levantada -> abaixa (sai da fila)
+//   - está FALANDO  -> encerra a própria fala e passa a palavra ao próximo
+//                      (antes, clicar no ❌ durante a fala recolocava a pessoa
+//                      na fila em vez de encerrar)
+
+require_once __DIR__ . '/conexao.php';
+require_once __DIR__ . '/csrf.php';
+require_once __DIR__ . '/sala_helpers.php';
+
+header('Content-Type: text/plain; charset=utf-8');
 
 if (!isset($_POST['id_participante'])) {
-    die("ID inválido");
+    http_response_code(400);
+    echo "erro";
+    exit;
 }
 
 if (!csrf_verify($_POST['csrf_token'] ?? null)) {
@@ -12,7 +24,7 @@ if (!csrf_verify($_POST['csrf_token'] ?? null)) {
     exit;
 }
 
-$id_participante = intval($_POST['id_participante']);
+$id_participante = (int) $_POST['id_participante'];
 
 if (!isset($_SESSION['id_participante']) || (int) $_SESSION['id_participante'] !== $id_participante) {
     http_response_code(403);
@@ -20,38 +32,56 @@ if (!isset($_SESSION['id_participante']) || (int) $_SESSION['id_participante'] !
     exit;
 }
 
-$stmt = $mysqli->prepare("
-    SELECT data_hora_solicitacao 
-    FROM participante 
-    WHERE id_participante = ?
-");
-$stmt->bind_param("i", $id_participante);
-$stmt->execute();
-$result = $stmt->get_result();
-$row = $result->fetch_assoc();
-$valorAtual = $row['data_hora_solicitacao'];
-$stmt->close();
+session_write_close();
 
-if ($valorAtual === null) {
-    $novoValor = date("Y-m-d H:i:s");
-} else {
-    $novoValor = null;
-}
+$participante = db_fetch_one(
+    $mysqli,
+    "SELECT fk_sala_atual FROM participante WHERE id_participante = ?",
+    "i",
+    $id_participante
+);
 
-$stmt2 = $mysqli->prepare("
-    UPDATE participante 
-    SET data_hora_solicitacao = ?, ultima_atividade = NOW()
-    WHERE id_participante = ?
-");
-
-$stmt2->bind_param("si", $novoValor, $id_participante);
-$stmt2->execute();
-
-if ($stmt2->affected_rows >= 0) {
-    echo $novoValor === null ? "null" : "hora";
-} else {
+if ($participante === null) {
+    http_response_code(404);
     echo "erro";
+    exit;
 }
 
-$stmt2->close();
-?>
+$id_sala = (int) $participante['fk_sala_atual'];
+
+// Está falando agora? Então o clique significa "terminei".
+$falando_agora = db_fetch_one(
+    $mysqli,
+    "SELECT 1 AS ok FROM sala WHERE id_sala = ? AND fk_participante_falando = ?",
+    "ii",
+    $id_sala,
+    $id_participante
+);
+
+if ($falando_agora !== null) {
+    avancar_fala_sala($mysqli, $id_sala, $id_participante);
+    echo "fim";
+    exit;
+}
+
+// Alterna a mão em UM único UPDATE (atômico): dois cliques simultâneos não
+// conseguem se atropelar. A hora vem do relógio do banco, com milissegundos,
+// a mesma fonte usada para ordenar a fila.
+db_exec(
+    $mysqli,
+    "UPDATE participante
+        SET data_hora_solicitacao = IF(data_hora_solicitacao IS NULL, NOW(3), NULL),
+            ultima_atividade = NOW()
+      WHERE id_participante = ?",
+    "i",
+    $id_participante
+);
+
+$atual = db_fetch_one(
+    $mysqli,
+    "SELECT data_hora_solicitacao FROM participante WHERE id_participante = ?",
+    "i",
+    $id_participante
+);
+
+echo ($atual !== null && $atual['data_hora_solicitacao'] !== null) ? "hora" : "null";

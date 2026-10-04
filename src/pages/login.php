@@ -1,10 +1,11 @@
 <?php
-session_start();
-include("../functions/conexao.php");
-require("../functions/csrf.php");
-require("../functions/idioma.php");
+require_once __DIR__ . '/../functions/conexao.php';
+require_once __DIR__ . '/../functions/csrf.php';
+require_once __DIR__ . '/../functions/idioma.php';
+require_once __DIR__ . '/../functions/util.php';
 
 $erro = "";
+$identificador = "";
 
 // tempo, em minutos, que uma sessão precisa ficar sem atividade para ser
 // considerada "expirada" e liberar um novo login em outro lugar
@@ -15,70 +16,77 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!csrf_verify($_POST['csrf_token'] ?? null)) {
         $erro = t('erro_sessao_expirada');
     } else {
-        $identificador = trim($_POST['identificador'] ?? '');
-        $senha = trim($_POST['senha'] ?? '');
+        $identificador = post_texto('identificador');
 
-        if (empty($identificador)) {
+        // A senha NÃO passa por trim(): o cadastro também não remove espaços,
+        // então uma senha com espaço no começo/fim nunca conseguiria entrar.
+        $senha = (isset($_POST['senha']) && is_string($_POST['senha'])) ? $_POST['senha'] : '';
+
+        if ($identificador === '') {
             $erro = t('erro_preencha_email_usuario');
-        } else if (empty($senha)) {
+        } elseif ($senha === '') {
             $erro = t('erro_preencha_senha');
         } else {
-            // autentica tanto por e-mail quanto por nome de usuário
-            $stmt = $mysqli->prepare("SELECT id_criador, nome_criador, senha, session_token, session_last_activity FROM criador WHERE email = ? OR nome_criador = ?");
-            if ($stmt) {
-                $stmt->bind_param("ss", $identificador, $identificador);
-                $stmt->execute();
-                $result = $stmt->get_result();
+            // Autentica por e-mail OU nome de usuário, sem ambiguidade: e-mail
+            // sempre tem "@" e o cadastro proíbe "@" em nome de usuário.
+            // ($campo vem de uma lista fixa, nunca do usuário.)
+            $campo = (strpos($identificador, '@') !== false) ? 'email' : 'nome_criador';
 
-                if ($result && $result->num_rows === 1) {
-                    $usuario = $result->fetch_assoc();
+            try {
+                $usuario = db_fetch_one(
+                    $mysqli,
+                    "SELECT id_criador, nome_criador, senha, session_token, session_last_activity FROM criador WHERE $campo = ?",
+                    "s",
+                    $identificador
+                );
 
-                    if (password_verify($senha, $usuario['senha'])) {
-                        $id_criador = $usuario['id_criador'];
-
-                        $sessao_ativa = false;
-
-                        if (!empty($usuario['session_token']) && !empty($usuario['session_last_activity'])) {
-                            $ultima = new DateTime($usuario['session_last_activity']);
-                            $agora = new DateTime();
-                            $minutos_parado = ($agora->getTimestamp() - $ultima->getTimestamp()) / 60;
-
-                            if ($minutos_parado < $LIMITE_INATIVIDADE_MINUTOS) {
-                                $sessao_ativa = true;
-                            }
-                        }
-
-                        if ($sessao_ativa) {
-                            $erro = t('erro_conta_logada');
-                        } else {
-                            $novo_token = bin2hex(random_bytes(32));
-
-                            $stmt_token = $mysqli->prepare("UPDATE criador SET session_token = ?, session_last_activity = NOW() WHERE id_criador = ?");
-                            if ($stmt_token) {
-                                $stmt_token->bind_param("si", $novo_token, $id_criador);
-                                $stmt_token->execute();
-                                $stmt_token->close();
-
-                                session_regenerate_id(true);
-                                $_SESSION['id_criador'] = $id_criador;
-                                $_SESSION['nome_criador'] = $usuario['nome_criador'];
-                                $_SESSION['session_token'] = $novo_token;
-
-                                $stmt->close();
-                                header("Location: criar.php");
-                                exit();
-                            } else {
-                                $erro = t('erro_registrar_sessao');
-                            }
-                        }
-                    } else {
-                        $erro = t('erro_usuario_senha_incorretos');
-                    }
-                } else {
+                if ($usuario === null) {
+                    // Gasta o mesmo tempo de uma verificação real, para que o
+                    // tempo de resposta não revele quais contas existem.
+                    password_hash($senha, PASSWORD_DEFAULT);
                     $erro = t('erro_usuario_senha_incorretos');
+                } elseif (!password_verify($senha, (string) $usuario['senha'])) {
+                    $erro = t('erro_usuario_senha_incorretos');
+                } else {
+                    $id_criador = (int) $usuario['id_criador'];
+
+                    $sessao_ativa = false;
+
+                    if (!empty($usuario['session_token']) && !empty($usuario['session_last_activity'])) {
+                        $ultima = new DateTime($usuario['session_last_activity']);
+                        $agora = new DateTime();
+                        $minutos_parado = ($agora->getTimestamp() - $ultima->getTimestamp()) / 60;
+
+                        if ($minutos_parado < $LIMITE_INATIVIDADE_MINUTOS) {
+                            $sessao_ativa = true;
+                        }
+                    }
+
+                    if ($sessao_ativa) {
+                        $erro = t('erro_conta_logada');
+                    } else {
+                        $novo_token = bin2hex(random_bytes(32));
+
+                        db_exec(
+                            $mysqli,
+                            "UPDATE criador SET session_token = ?, session_last_activity = NOW() WHERE id_criador = ?",
+                            "si",
+                            $novo_token,
+                            $id_criador
+                        );
+
+                        session_regenerate_id(true);
+                        unset($_SESSION['csrf_token']); // token novo para a sessão autenticada
+                        $_SESSION['id_criador'] = $id_criador;
+                        $_SESSION['nome_criador'] = $usuario['nome_criador'];
+                        $_SESSION['session_token'] = $novo_token;
+
+                        header("Location: criar.php");
+                        exit();
+                    }
                 }
-                $stmt->close();
-            } else {
+            } catch (mysqli_sql_exception $e) {
+                error_log('login.php: ' . $e->getMessage());
                 $erro = t('erro_servidor_bd');
             }
         }
@@ -86,6 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 
+<!DOCTYPE html>
 <html lang="<?php echo $idioma_atual === 'es' ? 'es' : 'pt-BR'; ?>">
 
 <head>
@@ -104,6 +113,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <body>
     <?php idioma_switch_html(); ?>
+    <form id="formLogout" action="../functions/logout.php" method="POST" class="d-none">
+        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
+    </form>
     <div class="container">
         <div class="row">
             <div class="col-md-4"></div>
@@ -124,7 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <?php endif; ?>
                             <label for="identificador" class="form-label"><?php echo t('label_usuario_email'); ?></label>
                             <input name="identificador" type="text" class="form-control" id="identificador"
-                                value="<?php echo isset($_POST['identificador']) ? htmlspecialchars($_POST['identificador'], ENT_QUOTES, 'UTF-8') : ''; ?>"
+                                value="<?php echo htmlspecialchars($identificador, ENT_QUOTES, 'UTF-8'); ?>"
                                 required><br>
 
                             <label for="password" class="form-label"><?php echo t('label_senha'); ?></label>
@@ -147,8 +159,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             window.open("register.php", "_self");
         });
 
+        // "Sair" agora é um POST com token CSRF (antes era um link GET)
         document.getElementById("btnSair").addEventListener("click", () => {
-            window.open("../functions/logout.php", "_self");
+            document.getElementById("formLogout").submit();
         });
     </script>
 </body>

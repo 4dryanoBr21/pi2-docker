@@ -1,1 +1,11 @@
+# Segredos — nunca versionar
 .env
+
+# Certificados e chaves TLS (gerados localmente, veja README)
+nginx/certs/*
+!nginx/certs/.gitkeep
+
+# Lixo de sistema/editor
+.DS_Store
+Thumbs.db
+*.log

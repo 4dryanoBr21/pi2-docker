@@ -1,7 +1,8 @@
 <?php
-include("../functions/conexao.php");
-require("../functions/csrf.php");
-require("../functions/idioma.php");
+require_once __DIR__ . '/../functions/conexao.php';
+require_once __DIR__ . '/../functions/csrf.php';
+require_once __DIR__ . '/../functions/idioma.php';
+require_once __DIR__ . '/../functions/util.php';
 
 $mensagem = "";
 $tipo_alerta = "";
@@ -15,12 +16,21 @@ if (isset($_POST['submit'])) {
         $mensagem = t('erro_sessao_expirada');
         $tipo_alerta = "danger";
     } else {
-        $nome = trim($_POST['nome'] ?? '');
-        $email = trim($_POST['email'] ?? '');
-        $senha_texto = $_POST['senha'] ?? '';
+        $nome = post_texto('nome');
+        $email = post_texto('email');
+        $senha_texto = (isset($_POST['senha']) && is_string($_POST['senha'])) ? $_POST['senha'] : '';
 
         if ($nome === '' || $email === '' || $senha_texto === '') {
             $mensagem = t('erro_preencha_campos');
+            $tipo_alerta = "danger";
+        } elseif (strpos($nome, '@') !== false) {
+            // o login decide "e-mail ou usuário" pela presença do "@"; sem esta
+            // regra alguém poderia cadastrar o e-mail de outra pessoa como
+            // nome de usuário e travar o login dela
+            $mensagem = t('erro_usuario_sem_arroba');
+            $tipo_alerta = "danger";
+        } elseif (mb_strlen($nome) > 100 || mb_strlen($email) > 100) {
+            $mensagem = t('erro_nome_longo');
             $tipo_alerta = "danger";
         } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $mensagem = t('erro_email_invalido');
@@ -29,43 +39,53 @@ if (isset($_POST['submit'])) {
             $mensagem = t('erro_senha_minima');
             $tipo_alerta = "danger";
         } else {
-            $stmt_check = $mysqli->prepare("SELECT id_criador FROM criador WHERE nome_criador = ? OR email = ?");
-            if ($stmt_check) {
-                $stmt_check->bind_param("ss", $nome, $email);
-                $stmt_check->execute();
-                $result_check = $stmt_check->get_result();
+            try {
+                $existente = db_fetch_one(
+                    $mysqli,
+                    "SELECT id_criador FROM criador WHERE nome_criador IN (?, ?) OR email IN (?, ?)",
+                    "ssss",
+                    $nome,
+                    $email,
+                    $nome,
+                    $email
+                );
 
-                if ($result_check && $result_check->num_rows > 0) {
+                if ($existente !== null) {
                     $mensagem = t('erro_usuario_existente');
                     $tipo_alerta = "danger";
                 } else {
                     $senha_hash = password_hash($senha_texto, PASSWORD_DEFAULT);
 
-                    $stmt_insert = $mysqli->prepare("INSERT INTO criador (nome_criador, email, senha) VALUES (?, ?, ?)");
-                    if ($stmt_insert) {
-                        $stmt_insert->bind_param("sss", $nome, $email, $senha_hash);
+                    db_exec(
+                        $mysqli,
+                        "INSERT INTO criador (nome_criador, email, senha) VALUES (?, ?, ?)",
+                        "sss",
+                        $nome,
+                        $email,
+                        $senha_hash
+                    );
 
-                        if ($stmt_insert->execute()) {
-                            $mensagem = t('msg_cadastro_sucesso', t('msg_cadastro_sucesso_link'));
-                            $tipo_alerta = "success";
-                            $nome = "";
-                            $email = "";
-                        } else {
-                            $mensagem = t('erro_cadastro_bd');
-                            $tipo_alerta = "danger";
-                        }
-                        $stmt_insert->close();
-                    }
+                    $mensagem = t('msg_cadastro_sucesso', t('msg_cadastro_sucesso_link'));
+                    $tipo_alerta = "success";
+                    $nome = "";
+                    $email = "";
                 }
-                $stmt_check->close();
-            } else {
-                $mensagem = t('erro_servidor_dados');
+            } catch (mysqli_sql_exception $e) {
+                if ($e->getCode() === 1062) {
+                    // duplicidade pega pelo UNIQUE do banco (dois cadastros
+                    // iguais chegando ao mesmo tempo)
+                    $mensagem = t('erro_usuario_existente');
+                } else {
+                    error_log('register.php: ' . $e->getMessage());
+                    $mensagem = t('erro_cadastro_bd');
+                }
                 $tipo_alerta = "danger";
             }
         }
     }
 }
 ?>
+<!DOCTYPE html>
 <html lang="<?php echo $idioma_atual === 'es' ? 'es' : 'pt-BR'; ?>">
 
 <head>
@@ -84,6 +104,9 @@ if (isset($_POST['submit'])) {
 
 <body>
     <?php idioma_switch_html(); ?>
+    <form id="formLogout" action="../functions/logout.php" method="POST" class="d-none">
+        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
+    </form>
     <div class="container">
         <div class="row">
             <div class="col-md-4"></div>
@@ -130,8 +153,9 @@ if (isset($_POST['submit'])) {
 </body>
 
 <script>
+    // "Sair" agora é um POST com token CSRF (antes era um link GET)
     document.getElementById("btnSair").addEventListener("click", () => {
-        window.open("../functions/logout.php", "_self");
+        document.getElementById("formLogout").submit();
     });
 </script>
 

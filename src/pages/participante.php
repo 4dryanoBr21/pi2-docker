@@ -1,35 +1,51 @@
 <?php
-require("../functions/conexao.php");
-require("../functions/csrf.php");
-require("../functions/idioma.php");
+require_once __DIR__ . '/../functions/conexao.php';
+require_once __DIR__ . '/../functions/csrf.php';
+require_once __DIR__ . '/../functions/idioma.php';
+require_once __DIR__ . '/../functions/util.php';
+require_once __DIR__ . '/../functions/sala_helpers.php';
 
-if (!isset($_SESSION['codigo']) || !isset($_SESSION['nome'])) {
+// Sem os 3 dados da entrada na sala (código, nome e id), volta ao início.
+// (Antes só código e nome eram conferidos, e um id ausente gerava um erro
+// de JavaScript na página.)
+if (!isset($_SESSION['codigo'], $_SESSION['nome'], $_SESSION['id_participante'])) {
     header("Location: ../index.php");
     exit;
 }
 
-$codigo_sala = $_SESSION['codigo'];
-$nome_participante = $_SESSION['nome'];
+$id_participante = (int) $_SESSION['id_participante'];
 
-$stmt = $mysqli->prepare("SELECT id_sala, nome_sala FROM sala WHERE codigo_sala = ?");
-$stmt->bind_param("s", $codigo_sala);
-$stmt->execute();
-$result = $stmt->get_result();
+$sala = db_fetch_one(
+    $mysqli,
+    "SELECT id_sala, nome_sala FROM sala WHERE codigo_sala = ?",
+    "s",
+    (string) $_SESSION['codigo']
+);
 
-if ($result && $result->num_rows > 0) {
-    $sala = $result->fetch_assoc();
-    $id_sala = $sala['id_sala'];
-    $nome_sala = $sala['nome_sala'];
-} else {
-    echo t('erro_sala_nao_encontrada_simples');
+// A sala ainda existe E este participante ainda está registrado NELA?
+// (a sala pode ter sido encerrada, ou o participante removido por inatividade)
+$participante_valido = $sala !== null
+    && db_fetch_one(
+        $mysqli,
+        "SELECT 1 AS ok FROM participante WHERE id_participante = ? AND fk_sala_atual = ?",
+        "ii",
+        $id_participante,
+        (int) $sala['id_sala']
+    ) !== null;
+
+if (!$participante_valido) {
+    limpar_sessao_participante();
+    header("Location: ../index.php");
     exit;
 }
 
-$stmt->close();
+$id_sala = (int) $sala['id_sala'];
+$nome_sala = $sala['nome_sala'];
 
 $csrf = csrf_token();
 ?>
 
+<!DOCTYPE html>
 <html lang="<?php echo $idioma_atual === 'es' ? 'es' : 'pt-BR'; ?>">
 
 <head>
@@ -87,19 +103,28 @@ $csrf = csrf_token();
         </div>
     </div>
 
+    <script src="../assets/app.js"></script>
     <script>
-        const idSala = <?php echo $id_sala; ?>;
-        const idParticipante = <?php echo $_SESSION['id_participante']; ?>;
+        const idSala = <?php echo (int) $id_sala; ?>;
+        const idParticipante = <?php echo (int) $id_participante; ?>;
         const csrfToken = "<?php echo htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8'); ?>";
-        let restanteLocal = null;
+
+        // O servidor é a fonte da verdade sobre o tempo; aqui guardamos só o
+        // instante (relógio deste navegador) em que a fala termina e
+        // recalculamos a tela a partir dele. Não depende de os timers do
+        // navegador dispararem exatamente a cada segundo.
+        const TOLERANCIA_MS = 1500;
+        let fimFalaMs = null;
         let maoLevantada = false;
         let speakerAtualId = null;
+        let enviandoMao = false;
 
         const textos = {
             levanteAMao: <?php echo tj('texto_levante_mao'); ?>,
             posicaoFila: <?php echo tj('texto_posicao_fila'); ?>,
             abaixarMao: <?php echo tj('aria_abaixar_mao'); ?>,
             levantarMao: <?php echo tj('aria_levantar_mao'); ?>,
+            encerrarFala: <?php echo tj('aria_encerrar_fala'); ?>,
             nenhumParticipanteAinda: <?php echo tj('texto_nenhum_participante_ainda'); ?>,
             voceSufixo: <?php echo tj('texto_voce_sufixo'); ?>,
             erroSairSala: <?php echo tj('erro_sair_sala'); ?>
@@ -114,24 +139,18 @@ $csrf = csrf_token();
             return textos.posicaoFila.replace(/%d/g, () => valores[indice++]);
         }
 
-        function verificarSala() {
-            fetch("../functions/verifica_sala.php?id_sala=" + idSala)
-                .then(res => res.text())
-                .then(resp => {
-                    if (resp.trim() === "1") {
-                        window.location.href = "../index.php";
-                    }
-                });
+        function desenharRelogio() {
+            if (fimFalaMs !== null) {
+                const restante = Math.max(0, Math.ceil((fimFalaMs - Date.now()) / 1000));
+                document.getElementById("contadorFala").textContent = MI.formatarTempo(restante);
+            }
         }
 
-        function formatarMMSS(totalSegundos) {
-            const m = Math.floor(totalSegundos / 60).toString().padStart(2, "0");
-            const s = Math.floor(totalSegundos % 60).toString().padStart(2, "0");
-            return `${m}:${s}`;
-        }
-
+        // Este mesmo endpoint também avisa quando a sala foi encerrada ou o
+        // participante foi removido (responde com "erro"): era a função do
+        // antigo verifica_sala.php, que consultava o servidor 1x por segundo.
         function atualizarEstado() {
-            fetch("../functions/estado_sala.php?id_sala=" + idSala)
+            fetch("../functions/estado_sala.php?id_sala=" + idSala, { cache: "no-store" })
                 .then(res => res.json())
                 .then(estado => {
                     if (estado.erro) {
@@ -139,6 +158,7 @@ $csrf = csrf_token();
                         return;
                     }
 
+                    const agora = Date.now();
                     const souEu = estado.falando && estado.falando.id_participante === idParticipante;
                     const mao = document.getElementById("mao");
 
@@ -146,16 +166,18 @@ $csrf = csrf_token();
                         document.getElementById("estadoAguardando").style.display = "none";
                         document.getElementById("estadoFalando").style.display = "block";
 
-                        if (speakerAtualId !== estado.falando.id_participante) {
+                        const novoFim = agora + estado.falando.restante_segundos * 1000;
+                        if (speakerAtualId !== estado.falando.id_participante || fimFalaMs === null
+                            || Math.abs(novoFim - fimFalaMs) > TOLERANCIA_MS) {
                             speakerAtualId = estado.falando.id_participante;
-                            restanteLocal = estado.falando.restante_segundos;
+                            fimFalaMs = novoFim;
                         }
-                        document.getElementById("contadorFala").textContent = formatarMMSS(restanteLocal);
+                        maoLevantada = false;
                     } else {
                         document.getElementById("estadoAguardando").style.display = "block";
                         document.getElementById("estadoFalando").style.display = "none";
                         speakerAtualId = null;
-                        restanteLocal = null;
+                        fimFalaMs = null;
 
                         const posicao = estado.fila.findIndex(p => p.id_participante === idParticipante);
                         if (posicao === -1) {
@@ -168,43 +190,37 @@ $csrf = csrf_token();
                         }
                     }
 
-                    mao.textContent = maoLevantada || souEu ? "❌" : "🤚";
-                    mao.setAttribute("aria-label", maoLevantada || souEu ? textos.abaixarMao : textos.levantarMao);
+                    // ❌ tem dois significados: abaixar a mão (na fila) ou
+                    // encerrar a própria fala (quando é a sua vez)
+                    mao.textContent = (maoLevantada || souEu) ? "❌" : "🤚";
+                    mao.setAttribute(
+                        "aria-label",
+                        souEu ? textos.encerrarFala : (maoLevantada ? textos.abaixarMao : textos.levantarMao)
+                    );
 
-                    const listaPresentes = document.getElementById("listaPresentes");
-                    listaPresentes.innerHTML = "";
-                    if (estado.presentes.length === 0) {
-                        const vazio = document.createElement("p");
-                        vazio.textContent = textos.nenhumParticipanteAinda;
-                        listaPresentes.appendChild(vazio);
-                    } else {
-                        const idsNaFila = new Set(estado.fila.map(p => p.id_participante));
-                        estado.presentes.forEach(p => {
-                            const item = document.createElement("p");
-                            let marcador = "";
-                            if (estado.falando && estado.falando.id_participante === p.id_participante) {
-                                marcador = " 🎙️";
-                            } else if (idsNaFila.has(p.id_participante)) {
-                                marcador = " 🤚";
-                            }
-                            const voce = p.id_participante === idParticipante ? textos.voceSufixo : "";
-                            item.textContent = p.nome + voce + marcador;
-                            listaPresentes.appendChild(item);
-                        });
-                    }
+                    MI.renderizarPresentes(document.getElementById("listaPresentes"), estado, {
+                        textoVazio: textos.nenhumParticipanteAinda,
+                        idPropio: idParticipante,
+                        sufixoVoce: textos.voceSufixo
+                    });
+
+                    desenharRelogio();
                 })
                 .catch(err => console.error("Erro ao buscar estado da sala:", err));
         }
 
         document.getElementById("mao").addEventListener("click", () => {
+            if (enviandoMao) return; // evita duplo clique (levantar e abaixar sem querer)
+            enviandoMao = true;
+
             fetch("../functions/salvar_hora.php", {
                 method: "POST",
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
                 body: "id_participante=" + idParticipante + "&csrf_token=" + encodeURIComponent(csrfToken)
             })
                 .then(res => res.text())
-                .then(() => atualizarEstado())
-                .catch(err => console.error("Erro ao alternar horário:", err));
+                .then(() => { enviandoMao = false; atualizarEstado(); })
+                .catch(err => { enviandoMao = false; console.error("Erro ao alternar horário:", err); });
         });
 
         document.getElementById("btnSair").addEventListener("click", function () {
@@ -224,13 +240,7 @@ $csrf = csrf_token();
                 .catch(err => console.error("Erro:", err));
         });
 
-        setInterval(verificarSala, 1000);
-        setInterval(() => {
-            if (restanteLocal !== null) {
-                restanteLocal = Math.max(0, restanteLocal - 1);
-                document.getElementById("contadorFala").textContent = formatarMMSS(restanteLocal);
-            }
-        }, 1000);
+        setInterval(desenharRelogio, 250);
         setInterval(atualizarEstado, 2000);
         atualizarEstado();
     </script>

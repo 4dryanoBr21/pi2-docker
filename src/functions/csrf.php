@@ -1,7 +1,6 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once __DIR__ . '/sessao.php';
+iniciar_sessao();
 
 function csrf_token(): string
 {
@@ -11,7 +10,9 @@ function csrf_token(): string
     return $_SESSION['csrf_token'];
 }
 
-function csrf_verify(?string $token): bool
+// Aceita qualquer tipo de entrada (inclusive array vindo de um
+// "csrf_token[]=x" malicioso) e simplesmente devolve false se não for string.
+function csrf_verify($token): bool
 {
     return isset($_SESSION['csrf_token']) && is_string($token) && $token !== ''
         && hash_equals($_SESSION['csrf_token'], $token);

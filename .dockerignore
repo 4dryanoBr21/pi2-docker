@@ -1,0 +1,7 @@
+.git
+.env
+.env.*
+nginx
+db-init
+db-migrations
+*.md

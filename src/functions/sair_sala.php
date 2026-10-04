@@ -1,8 +1,14 @@
 <?php
-require("conexao.php");
-require("csrf.php");
+// Participante sai da sala por conta própria.
+
+require_once __DIR__ . '/conexao.php';
+require_once __DIR__ . '/csrf.php';
+require_once __DIR__ . '/sala_helpers.php';
+
+header('Content-Type: text/plain; charset=utf-8');
 
 if (!isset($_POST['id_participante'])) {
+    http_response_code(400);
     echo "erro";
     exit;
 }
@@ -13,7 +19,7 @@ if (!csrf_verify($_POST['csrf_token'] ?? null)) {
     exit;
 }
 
-$id_participante = intval($_POST['id_participante']);
+$id_participante = (int) $_POST['id_participante'];
 
 if (!isset($_SESSION['id_participante']) || (int) $_SESSION['id_participante'] !== $id_participante) {
     http_response_code(403);
@@ -21,29 +27,7 @@ if (!isset($_SESSION['id_participante']) || (int) $_SESSION['id_participante'] !
     exit;
 }
 
-$stmt0 = $mysqli->prepare("
-    UPDATE sala
-    SET fk_participante_falando = NULL, fala_inicio = NULL
-    WHERE fk_participante_falando = ?
-");
-$stmt0->bind_param("i", $id_participante);
-$stmt0->execute();
-$stmt0->close();
-
-$stmt1 = $mysqli->prepare("DELETE FROM participante WHERE id_participante = ?");
-$stmt1->bind_param("i", $id_participante);
-$stmt1->execute();
-$stmt1->close();
-
-if (isset($_SESSION['id_participante'])) {
-    unset($_SESSION['id_participante']);
-}
-if (isset($_SESSION['nome'])) {
-    unset($_SESSION['nome']);
-}
-if (isset($_SESSION['codigo'])) {
-    unset($_SESSION['codigo']);
-}
+remover_participante($mysqli, $id_participante);
+limpar_sessao_participante();
 
 echo "ok";
-?>

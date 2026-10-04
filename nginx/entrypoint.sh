@@ -8,6 +8,15 @@ set -e
 # no padrão seguro (HTTPS).
 USE_HTTPS_NORMALIZADO=$(echo "${USE_HTTPS:-true}" | tr '[:upper:]' '[:lower:]')
 
+# Trechos compartilhados pelos dois templates (limite de requisições,
+# cabeçalhos de segurança e proxy para a aplicação).
+for arq in common.inc locations.inc; do
+    if [ ! -f "/etc/nginx/conf-templates/$arq" ]; then
+        echo "[entrypoint] Arquivo $arq não encontrado em nginx/conf-templates/." >&2
+        exit 1
+    fi
+done
+
 if [ "$USE_HTTPS_NORMALIZADO" = "false" ]; then
     if [ ! -f /etc/nginx/conf-templates/http.conf ]; then
         echo "[entrypoint] Template http.conf não encontrado." >&2
