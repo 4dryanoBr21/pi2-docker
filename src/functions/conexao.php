@@ -29,7 +29,10 @@ try {
     // é incluído depois deste arquivo), então detectamos diretamente
     // pelo cookie para dar a mensagem no idioma certo mesmo numa falha
     // tão cedo no carregamento da página.
-    $idioma_erro = (isset($_COOKIE['idioma']) && $_COOKIE['idioma'] === 'es') ? 'es' : 'pt';
+    $idioma_erro = 'pt';
+    if (isset($_COOKIE['idioma']) && is_string($_COOKIE['idioma']) && in_array($_COOKIE['idioma'], ['pt', 'es'])) {
+        $idioma_erro = $_COOKIE['idioma'];
+    }
     $mensagens_erro_conexao = [
         'pt' => 'Não foi possível conectar ao banco de dados. Tente novamente mais tarde.',
         'es' => 'No fue posible conectar con la base de datos. Intentá de nuevo más tarde.',

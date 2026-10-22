@@ -9,7 +9,7 @@ $identificador = "";
 
 // tempo, em minutos, que uma sessão precisa ficar sem atividade para ser
 // considerada "expirada" e liberar um novo login em outro lugar
-$LIMITE_INATIVIDADE_MINUTOS = 1;
+$LIMITE_INATIVIDADE_MINUTOS = 5;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
