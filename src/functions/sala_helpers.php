@@ -97,21 +97,35 @@ function limpar_sala_se_abandonada(mysqli $mysqli, int $id_sala, int $limite_min
  */
 function limpar_participantes_inativos(mysqli $mysqli, int $id_sala, int $limite_minutos = LIMITE_PARTICIPANTE_INATIVO_MIN): void
 {
-    $inativos = db_fetch_all(
+    // Otimização: Batch Delete.
+    // Primeiro, liberamos a palavra de qualquer participante inativo que esteja falando.
+    db_exec(
         $mysqli,
-        "SELECT id_participante
-           FROM participante
-          WHERE fk_sala_atual = ?
-            AND ultima_atividade IS NOT NULL
-            AND ultima_atividade < (NOW() - INTERVAL ? MINUTE)",
+        "UPDATE sala SET fk_participante_falando = NULL, fala_inicio = NULL
+         WHERE fk_participante_falando IN (
+             SELECT id_participante FROM (
+                 SELECT id_participante FROM participante
+                 WHERE fk_sala_atual = ?
+                   AND ultima_atividade IS NOT NULL
+                   AND ultima_atividade < (NOW() - INTERVAL ? MINUTE)
+             ) AS tmp
+         )",
         "ii",
         $id_sala,
         $limite_minutos
     );
 
-    foreach ($inativos as $linha) {
-        remover_participante($mysqli, (int) $linha['id_participante']);
-    }
+    // Depois, removemos todos os inativos em uma única query.
+    db_exec(
+        $mysqli,
+        "DELETE FROM participante
+         WHERE fk_sala_atual = ?
+           AND ultima_atividade IS NOT NULL
+           AND ultima_atividade < (NOW() - INTERVAL ? MINUTE)",
+        "ii",
+        $id_sala,
+        $limite_minutos
+    );
 }
 
 /**
@@ -119,7 +133,7 @@ function limpar_participantes_inativos(mysqli $mysqli, int $id_sala, int $limite
  * fila estiver vazia).
  *
  * $esperado = id do orador que o CLIENTE acredita estar falando (0 = ninguém).
- * Se o orador real for outro, nada é feito. Isso evita "pular" participantes
+ * Se o orador real for outro, nada é feita. Isso evita "pular" participantes
  * quando chegam dois pedidos quase juntos (duplo clique, ou clique + avanço
  * automático do cronômetro). Use null para avançar sem essa conferência.
  *

@@ -19,6 +19,13 @@ function criador_autenticado(mysqli $mysqli): bool
         return false;
     }
 
+    // Otimização: Cache de verificação do token.
+    // Evita consulta ao banco em cada poll se a verificação ocorreu nos últimos 60 segundos.
+    $agora = time();
+    if (isset($_SESSION['token_verificado_em']) && ($agora - $_SESSION['token_verificado_em'] < 60)) {
+        return true;
+    }
+
     $linha = db_fetch_one(
         $mysqli,
         "SELECT session_token FROM criador WHERE id_criador = ?",
@@ -26,9 +33,14 @@ function criador_autenticado(mysqli $mysqli): bool
         (int) $_SESSION['id_criador']
     );
 
-    return $linha !== null
+    if ($linha !== null
         && !empty($linha['session_token'])
-        && hash_equals((string) $linha['session_token'], $_SESSION['session_token']);
+        && hash_equals((string) $linha['session_token'], $_SESSION['session_token'])) {
+        $_SESSION['token_verificado_em'] = $agora;
+        return true;
+    }
+
+    return false;
 }
 
 /**
@@ -54,12 +66,21 @@ function criador_eh_dono_da_sala(mysqli $mysqli, int $id_sala): bool
  */
 function criador_registrar_atividade(mysqli $mysqli): void
 {
+    // Otimização: Throttle de atualização de atividade.
+    // Só atualiza o banco se a última atualização ocorreu há mais de 60 segundos.
+    $agora = time();
+    if (isset($_SESSION['last_activity_updated']) && ($agora - $_SESSION['last_activity_updated'] < 60)) {
+        return;
+    }
+
     db_exec(
         $mysqli,
         "UPDATE criador SET session_last_activity = NOW() WHERE id_criador = ?",
         "i",
         (int) $_SESSION['id_criador']
     );
+
+    $_SESSION['last_activity_updated'] = $agora;
 }
 
 /**
@@ -90,3 +111,4 @@ function papel_na_sala(mysqli $mysqli, int $id_sala): ?string
 
     return null;
 }
+?>
