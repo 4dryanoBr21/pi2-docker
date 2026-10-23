@@ -10,6 +10,7 @@ RUN docker-php-ext-install mysqli \
 COPY docker/php/custom.ini "$PHP_INI_DIR/conf.d/zz-custom.ini"
 COPY docker/apache/zz-app-security.conf /etc/apache2/conf-available/zz-app-security.conf
 RUN a2enconf zz-app-security
+RUN a2enmod headers
 
 WORKDIR /var/www/html
 

@@ -12,8 +12,14 @@ require_once __DIR__ . '/sala_helpers.php';
 
 // GET (links antigos, favoritos) ou token inválido: não faz nada, só volta
 // para a página inicial.
-if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !csrf_verify($_POST['csrf_token'] ?? null)) {
-    header('Location: /index.php');
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    echo "method not allowed";
+    exit;
+}
+if (!csrf_verify($_POST['csrf_token'] ?? null)) {
+    http_response_code(403);
+    echo "erro";
     exit;
 }
 

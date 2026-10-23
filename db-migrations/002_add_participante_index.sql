@@ -1,0 +1,1 @@
+ALTER TABLE participante ADD INDEX idx_fksala_hora (fk_sala_atual, data_hora_solicitacao, id_participante);

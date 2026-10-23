@@ -100,6 +100,25 @@ services:
     networks:
       - pi2_net
 
+  cron:
+    image: php:8.3-cli
+    container_name: pi2_cron
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      DB_USER: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      DB_NAME: ${MYSQL_DATABASE}
+      TZ: UTC
+    volumes:
+      - ./src:/var/www/html
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["sh", "-c", "while true; do php /var/www/html/src/cron/cleanup.php; sleep 60; done"]
+    networks:
+      - pi2_net
+
 networks:
   pi2_net:
     driver: bridge

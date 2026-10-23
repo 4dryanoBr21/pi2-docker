@@ -3,6 +3,8 @@ require_once __DIR__ . '/../functions/conexao.php';
 require_once __DIR__ . '/../functions/csrf.php';
 require_once __DIR__ . '/../functions/idioma.php';
 require_once __DIR__ . '/../functions/util.php';
+require_once __DIR__ . '/../functions/sessao.php';
+iniciar_sessao();
 
 $erro = "";
 $identificador = "";
@@ -45,8 +47,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // tempo de resposta não revele quais contas existem.
                     password_hash($senha, PASSWORD_DEFAULT);
                     $erro = t('erro_usuario_senha_incorretos');
+if (!isset($_SESSION['login_failures'])) {
+    $_SESSION['login_failures'] = 0;
+}
+$_SESSION['login_failures']++;
+$delay = min(5, $_SESSION['login_failures']);
+sleep($delay);
                 } elseif (!password_verify($senha, (string) $usuario['senha'])) {
                     $erro = t('erro_usuario_senha_incorretos');
+if (!isset($_SESSION['login_failures'])) {
+    $_SESSION['login_failures'] = 0;
+}
+$_SESSION['login_failures']++;
+$delay = min(5, $_SESSION['login_failures']);
+sleep($delay);
                 } else {
                     $id_criador = (int) $usuario['id_criador'];
 
@@ -76,6 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         );
 
                         session_regenerate_id(true);
+$_SESSION['login_failures'] = 0;
                         unset($_SESSION['csrf_token']); // token novo para a sessão autenticada
                         $_SESSION['id_criador'] = $id_criador;
                         $_SESSION['nome_criador'] = $usuario['nome_criador'];
