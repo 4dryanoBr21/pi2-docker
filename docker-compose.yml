@@ -119,6 +119,20 @@ services:
     networks:
       - pi2_net
 
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: pi2_ngrok
+    restart: unless-stopped
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+    command:
+      - "http"
+      - "proxy:80"
+    depends_on:
+      - proxy
+    networks:
+      - pi2_net
+
 networks:
   pi2_net:
     driver: bridge
