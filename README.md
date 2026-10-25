@@ -104,8 +104,8 @@ Se você quer que outras pessoas acessem o sistema via internet sem precisar con
 
 ---
 
-### HTTPS com certificado autoassinado
-Por padrão o sistema usa só HTTP (`USE_HTTPS=false`). Para ligar o HTTPS:
+### HTTPS com certificado autoassinado (Opcional)
+O sistema suporta HTTPS via certificado autoassinado, mas como o **ngrok** já fornece HTTPS automaticamente para o acesso externo, esta função agora é opcional e vem desativada por padrão. Para ligar:
 1. **Gere o certificado**:
    ```bash
    mkdir -p nginx/certs

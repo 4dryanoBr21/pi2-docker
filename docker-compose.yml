@@ -81,7 +81,7 @@ services:
     environment:
       # true  -> HTTPS com certificado autoassinado (porta 443) + redirect de HTTP
       # false -> apenas HTTP, sem certificado
-      USE_HTTPS: ${USE_HTTPS:-true}
+      USE_HTTPS: ${USE_HTTPS:-false}
     ports:
       - "${HTTP_PORT:-8192}:80"   # porta HTTP externa -> 80 interna do container
       - "443:443"
