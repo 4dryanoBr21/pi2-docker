@@ -155,9 +155,8 @@ if (isset($_POST['submit'])) {
         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
     </form>
     <div class="container">
-        <div class="row">
-            <div class="col-md-4"></div>
-            <div class="col-md-4">
+        <div class="row justify-content-center">
+            <div class="col-12 col-sm-8 col-md-6 col-lg-4">
                 <div class="text-center">
                     <img class="logo-black rounded" src="../img/MI_legenda.png" alt="<?php echo te('alt_logo'); ?>">
                 </div>
@@ -187,8 +186,16 @@ if (isset($_POST['submit'])) {
                             </div><br>
 
                             <label for="tempo" class="form-label"><?php echo t('label_tempo_fala'); ?></label>
-                            <input name="tempo" type="time" step="1" class="form-control" id="tempo"
-                                value="<?php echo htmlspecialchars($tempo, ENT_QUOTES, 'UTF-8'); ?>" required /><br>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-clock"></i> ⏱️</span>
+                                <input name="tempo" type="text" class="form-control" id="tempo"
+                                    placeholder="00:00:00"
+                                    value="<?php echo htmlspecialchars($tempo, ENT_QUOTES, 'UTF-8'); ?>"
+                                    required
+                                    pattern="^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$"
+                                    title="Formato esperado: HH:MM ou HH:MM:SS">
+                            </div>
+                            <div class="form-text mb-3">Ex: 00:05:00 para 5 minutos.</div><br>
 
                             <div class="d-grid gap-2">
                                 <button class="btn btn-dark" name="submit" type="submit"><?php echo t('btn_criar'); ?></button>
@@ -197,7 +204,6 @@ if (isset($_POST['submit'])) {
                     </div>
                 </div>
             </div>
-            <div class="col-md-4"></div>
         </div>
     </div>
 

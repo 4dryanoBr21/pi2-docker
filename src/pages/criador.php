@@ -68,9 +68,8 @@ $csrf = csrf_token();
   <button type="button" id="btnSairConta" class="btn btn-sm btn-outline-dark"
     style="position:absolute; top:16px; right:16px;"><?php echo t('btn_sair'); ?></button>
   <div class="container">
-    <div class="row">
-      <div class="col-md-3"></div>
-      <div class="col-md-6">
+    <div class="row justify-content-center">
+      <div class="col-12 col-sm-10 col-md-8 col-lg-6">
         <div class="text-center">
           <img class="logo-black rounded" src="../img/MI_legenda.png" alt="<?php echo te('alt_logo'); ?>">
         </div>
@@ -90,7 +89,7 @@ $csrf = csrf_token();
               <div id="semFalante"><?php echo t('texto_nenhum_falando'); ?></div>
               <div id="comFalante" style="display:none;">
                 <h4 class="fw-bold mb-1" id="nomeFalante"></h4>
-                <div style="font-size: 48px;" id="contadorFala">00:00</div>
+                <div class="display-4 fw-bold" id="contadorFala">00:00</div>
               </div>
             </div>
 
@@ -100,12 +99,11 @@ $csrf = csrf_token();
 
             <h6 class="fw-bold"><?php echo t('titulo_participantes_presentes'); ?></h6>
             <div id="listaPresentes" class="d-grid gap-2 overflow-auto shadow p-3 mb-2 bg-body-tertiary rounded"
-              style="height: 160px;" aria-live="polite">
+              style="max-height: 30vh;" aria-live="polite">
             </div>
           </div>
         </div>
       </div>
-      <div class="col-md-3"></div>
     </div>
   </div>
 

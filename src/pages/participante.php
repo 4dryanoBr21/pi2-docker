@@ -65,9 +65,8 @@ $csrf = csrf_token();
 <body>
     <?php idioma_switch_html(); ?>
     <div class="container">
-        <div class="row">
-            <div class="col-md-3"></div>
-            <div class="col-md-6">
+        <div class="row justify-content-center">
+            <div class="col-12 col-sm-10 col-md-8 col-lg-6">
                 <div class="text-center">
                     <img class="logo-black rounded" src="../img/MI_legenda.png" alt="<?php echo te('alt_logo'); ?>">
                 </div>
@@ -84,22 +83,21 @@ $csrf = csrf_token();
                             </div>
                             <div id="estadoFalando" style="display:none;">
                                 <h4 class="fw-bold mb-1"><?php echo t('texto_sua_vez'); ?></h4>
-                                <div style="font-size: 48px;" id="contadorFala">00:00</div>
+                                <div class="display-4 fw-bold" id="contadorFala">00:00</div>
                             </div>
                         </div>
 
                         <div class="d-grid gap-2 mb-3">
-                            <button id="mao" class="btn" type="button" style="font-size: 75px;" aria-label="<?php echo te('aria_levantar_mao'); ?>">🤚</button>
+                            <button id="mao" class="btn" type="button" style="font-size: clamp(50px, 15vw, 75px);" aria-label="<?php echo te('aria_levantar_mao'); ?>">🤚</button>
                         </div>
 
                         <h6 class="fw-bold"><?php echo t('titulo_participantes_presentes'); ?></h6>
                         <div id="listaPresentes" class="d-grid gap-2 overflow-auto shadow p-3 mb-2 bg-body-tertiary rounded"
-                            style="height: 160px;" aria-live="polite">
+                            style="max-height: 30vh;" aria-live="polite">
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3"></div>
         </div>
     </div>
 
