@@ -104,19 +104,6 @@ Se você quer que outras pessoas acessem o sistema via internet sem precisar con
 
 ---
 
-### HTTPS com certificado autoassinado (Opcional)
-O sistema suporta HTTPS via certificado autoassinado, mas como o **ngrok** já fornece HTTPS automaticamente para o acesso externo, esta função agora é opcional e vem desativada por padrão. Para ligar:
-1. **Gere o certificado**:
-   ```bash
-   mkdir -p nginx/certs
-   openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-     -keyout nginx/certs/selfsigned.key -out nginx/certs/selfsigned.crt \
-     -subj "/CN=localhost" \
-     -addext "subjectAltName=DNS:localhost,IP=SEU_IP_LOCAL"
-   ```
-2. No `.env`, mude para `USE_HTTPS=true`.
-3. Reinicie o proxy: `docker compose up -d --force-recreate proxy`.
-
 ### 🗄️ phpMyAdmin (Desenvolvimento)
 Para gerenciar o banco visualmente:
 ```bash
