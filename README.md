@@ -80,7 +80,29 @@ docker compose up -d --build
 
 ---
 
-## 🔒 Opcionais e Avançado
+## 🌐 Acesso Externo com ngrok
+Se você quer que outras pessoas acessem o sistema via internet sem precisar configurar roteador ou IP fixo, o projeto já vem com o **ngrok** integrado.
+
+### Como configurar:
+1. **Crie uma conta**: Cadastre-se gratuitamente em [ngrok.com](https://ngrok.com/).
+2. **Pegue seu Token**: No painel do ngrok, copie o seu `Your Authtoken`.
+3. **Configure o `.env`**:
+   Abra o arquivo `.env` e cole seu token na variável:
+   ```env
+   NGROK_AUTHTOKEN=seu_token_aqui
+   ```
+4. **Suba o sistema**:
+   ```bash
+   docker compose up -d
+   ```
+5. **Descubra a URL**:
+   O ngrok gera uma URL pública aleatória. Para descobri-la, rode:
+   ```bash
+   docker compose logs ngrok | grep "url="
+   ```
+   Ou acesse o painel do ngrok em `http://localhost:4040` (se a porta estiver exposta) ou via dashboard web do ngrok.
+
+---
 
 ### HTTPS com certificado autoassinado
 Por padrão o sistema usa só HTTP (`USE_HTTPS=false`). Para ligar o HTTPS:
