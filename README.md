@@ -4,7 +4,7 @@
 
 O **Me Inscrevo** é uma ferramenta simples para professores, moderadores e líderes de reunião. Ele permite que participantes "levantem a mão" digitalmente, criando uma fila de espera organizada com cronômetro individual, evitando que algumas pessoas dominem a conversa e garantindo que todos sejam ouvidos.
 
-🇧🇷 Português (Brasil) · 🇦🇷 Español (Argentina)
+🇧🇷 Português (Brasil) · 🇪🇸 Español (Espanha)
 
 ---
 
