@@ -87,7 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <body>
     <?php idioma_switch_html(); ?>
-    <div class="container">
+<main class="container">
         <div class="row justify-content-center">
             <div class="col-12 col-sm-8 col-md-6 col-lg-4">
                 <div class="text-center">
@@ -99,33 +99,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <form action="" method="POST">
                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
                             <?php if (!empty($erro)): ?>
-                                <div class="alert alert-danger" role="alert">
+                                <div class="alert alert-danger" role="alert" aria-live="assertive" id="form-error">
                                     <?php echo htmlspecialchars($erro, ENT_QUOTES, 'UTF-8'); ?>
                                 </div>
                             <?php endif; ?>
                             <label for="codigo" class="form-label"><?php echo t('label_codigo_sala'); ?></label>
                             <input name="codigo" type="text" class="form-control" id="codigo"
-                                value="<?php echo htmlspecialchars($codigo_valor, ENT_QUOTES, 'UTF-8'); ?>" required><br>
+                                value="<?php echo htmlspecialchars($codigo_valor, ENT_QUOTES, 'UTF-8'); ?>"
+                                <?php echo !empty($erro) ? 'aria-describedby="form-error"' : ''; ?> required><br>
 
                             <label for="nome" class="form-label"><?php echo t('label_nome_convidado'); ?></label>
                             <input name="nome" type="text" class="form-control" id="nome"
-                                value="<?php echo htmlspecialchars($nome_valor, ENT_QUOTES, 'UTF-8'); ?>" required><br>
+                                value="<?php echo htmlspecialchars($nome_valor, ENT_QUOTES, 'UTF-8'); ?>"
+                                <?php echo !empty($erro) ? 'aria-describedby="form-error"' : ''; ?> required><br>
 
                             <div class="d-grid gap-2">
                                 <button class="btn btn-dark" type="submit"><?php echo t('btn_entrar'); ?></button>
-                                <button id="login" class="btn" type="button"><?php echo t('btn_criar_sala'); ?></button>
+                                <a href="pages/login.php" class="btn btn-outline-dark" role="button"><?php echo t('btn_criar_sala'); ?></a>
                             </div>
                         </form>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+    </main>
 
     <script>
-        document.getElementById("login").addEventListener("click", () => {
-            window.location.href = "pages/login.php";
-        });
+        // Removido o listener de clique do botão #login, pois agora é um link <a>
     </script>
 </body>
 

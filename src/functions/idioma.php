@@ -56,10 +56,10 @@ function idioma_switch_html(): void
     <div class="idioma-switch" role="group" aria-label="Selecionar idioma / Seleccionar idioma">
         <button type="button" class="btn-idioma<?php echo $atual === 'pt' ? ' ativo' : ''; ?>"
             data-lang="pt" title="<?php echo te('idioma_pt_titulo'); ?>"
-            aria-label="<?php echo te('idioma_pt_titulo'); ?>">🇧🇷</button>
+            aria-label="<?php echo te('idioma_pt_titulo'); ?>" <?php echo $atual === 'pt' ? 'aria-current="true"' : ''; ?>>🇧🇷</button>
         <button type="button" class="btn-idioma<?php echo $atual === 'es' ? ' ativo' : ''; ?>"
             data-lang="es" title="<?php echo te('idioma_es_titulo'); ?>"
-            aria-label="<?php echo te('idioma_es_titulo'); ?>">🇪🇸</button>
+            aria-label="<?php echo te('idioma_es_titulo'); ?>" <?php echo $atual === 'es' ? 'aria-current="true"' : ''; ?>>🇪🇸</button>
     </div>
     <script>
         document.querySelectorAll(".btn-idioma").forEach(function (botao) {

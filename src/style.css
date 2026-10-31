@@ -41,6 +41,13 @@ body {
     border-color: #212529;
 }
 
+/* Melhorias de Acessibilidade */
+.form-control:focus, .btn:focus, .btn-idioma:focus {
+    outline: 3px solid #ffbf47 !important;
+    outline-offset: 2px;
+    box-shadow: none;
+}
+
 .btn-close {
     position: absolute; top: 10px; right: 10px;
 }
