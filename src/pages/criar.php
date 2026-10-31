@@ -189,13 +189,13 @@ if (isset($_POST['submit'])) {
                             <div class="input-group">
                                 <span class="input-group-text"><i class="bi bi-clock"></i> ⏱️</span>
                                 <input name="tempo" type="text" class="form-control" id="tempo"
-                                    placeholder="00:00:00"
+                                    placeholder="Ex: 00:05:00 para 5 minutos"
                                     value="<?php echo htmlspecialchars($tempo, ENT_QUOTES, 'UTF-8'); ?>"
                                     required
                                     pattern="^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$"
                                     title="Formato esperado: HH:MM ou HH:MM:SS">
                             </div>
-                            <div class="form-text mb-3">Ex: 00:05:00 para 5 minutos.</div><br>
+                            <div class="form-text mb-3"></div><br>
 
                             <div class="d-grid gap-2">
                                 <button class="btn btn-dark" name="submit" type="submit"><?php echo t('btn_criar'); ?></button>
