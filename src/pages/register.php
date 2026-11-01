@@ -99,6 +99,8 @@ if (isset($_POST['submit'])) {
     <link href='https://fonts.googleapis.com/css?family=Montserrat' rel='stylesheet'>
     <link rel="stylesheet" href="../style.css">
     <link rel="shortcut icon" href="../img/MI_legenda_branco.png" type="image/x-icon">
+    <script src="../assets/lang.js"></script>
+    <script src="../assets/auth.js"></script>
     <title><?php echo t('title_register'); ?></title>
 </head>
 
@@ -149,12 +151,5 @@ if (isset($_POST['submit'])) {
         </div>
     </div>
 </body>
-
-<script>
-    // "Sair" agora é um POST com token CSRF (antes era um link GET)
-    document.getElementById("btnSair").addEventListener("click", () => {
-        document.getElementById("formLogout").submit();
-    });
-</script>
 
 </html>

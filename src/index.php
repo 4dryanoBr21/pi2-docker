@@ -7,6 +7,18 @@ require_once __DIR__ . '/functions/sala_helpers.php';
 $erro = "";
 $codigo_valor = "";
 $nome_valor = "";
+$codigo_da_url = false;
+
+// Link do QR code (criar.php): /index.php?codigo=ABC123 já abre a tela com o
+// código da sala preenchido. Só aceita o mesmo formato que criar.php exige;
+// qualquer outra coisa é ignorada. Não faz nada além de preencher o campo.
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    $codigo_get = $_GET['codigo'] ?? null;
+    if (is_string($codigo_get) && preg_match('/^[A-Za-z0-9]{4,20}$/', $codigo_get)) {
+        $codigo_valor = $codigo_get;
+        $codigo_da_url = true;
+    }
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
@@ -82,6 +94,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link href='https://fonts.googleapis.com/css?family=Montserrat' rel='stylesheet'>
     <link rel="stylesheet" href="style.css">
     <link rel="shortcut icon" href="img/MI_legenda_branco.png" type="image/x-icon">
+    <script src="assets/lang.js"></script>
+    <script src="assets/app.js"></script>
     <title>ME INSCREVO</title>
 </head>
 
@@ -110,6 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                             <label for="nome" class="form-label"><?php echo t('label_nome_convidado'); ?></label>
                             <input name="nome" type="text" class="form-control" id="nome"
+                                <?php echo ($codigo_da_url ? 'autofocus' : ''); ?>
                                 value="<?php echo htmlspecialchars($nome_valor, ENT_QUOTES, 'UTF-8'); ?>"
                                 <?php echo !empty($erro) ? 'aria-describedby="form-error"' : ''; ?> required><br>
 
@@ -123,10 +138,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         </div>
     </main>
-
-    <script>
-        // Removido o listener de clique do botão #login, pois agora é um link <a>
-    </script>
 </body>
-
 </html>

@@ -61,13 +61,5 @@ function idioma_switch_html(): void
             data-lang="es" title="<?php echo te('idioma_es_titulo'); ?>"
             aria-label="<?php echo te('idioma_es_titulo'); ?>" <?php echo $atual === 'es' ? 'aria-current="true"' : ''; ?>>🇪🇸</button>
     </div>
-    <script>
-        document.querySelectorAll(".btn-idioma").forEach(function (botao) {
-            botao.addEventListener("click", function () {
-                document.cookie = "idioma=" + botao.dataset.lang + "; path=/; max-age=" + (60 * 60 * 24 * 365) + "; samesite=lax";
-                location.reload();
-            });
-        });
-    </script>
 <?php
 }

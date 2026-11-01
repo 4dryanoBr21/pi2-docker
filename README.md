@@ -121,6 +121,17 @@ Os scripts de `db-init/` rodam apenas na primeira criação. Para bancos existen
 
 ---
 
+## 🔐 Atualizações de segurança do PHP
+Em 21/10/2026 o PHP corrigiu duas falhas críticas (PHP2Shell, CVE-2026-109618 e CVE-2026-109619). Este projeto exige o PHP 8.3.36 ou superior: o `docker compose up -d --build` baixa a imagem base mais recente e o build **para com erro** se a imagem ainda for vulnerável. Nesse caso rode:
+```bash
+docker compose build --pull --no-cache && docker compose up -d
+```
+Confira a versão em uso: `docker compose exec app php -v`.
+
+> Se aparecer um arquivo `core` dentro de `src/`, é um *core dump* (travamento de um programa). Ele contém a senha do banco: apague-o e **não** o versione nem o compartilhe.
+
+---
+
 ## 🩺 Problemas Comuns (FAQ)
 
 <details>

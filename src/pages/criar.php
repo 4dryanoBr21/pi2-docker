@@ -151,6 +151,18 @@ if (isset($_POST['submit'])) {
 
 <body>
     <?php idioma_switch_html(); ?>
+    <div id="app-config"
+         data-textos="<?php echo htmlspecialchars(json_encode([
+           "btn_copiar_codigo" => t("btn_copiar_codigo"),
+           "texto_copiado" => t("texto_copiado"),
+           "btn_gerar_qr" => t("btn_gerar_qr"),
+           "btn_ocultar_qr" => t("btn_ocultar_qr"),
+           "erro_qr_codigo" => t("erro_qr_codigo"),
+           "erro_qr_endereco" => t("erro_qr_endereco"),
+           "aviso_qr_localhost" => t("aviso_qr_localhost"),
+           "legenda_qr_codigo" => t("legenda_qr_codigo"),
+           "aria_qr_canvas" => t("aria_qr_canvas")
+         ]), ENT_QUOTES, 'UTF-8'); ?>"></div>
     <form id="formLogout" action="../functions/logout.php" method="POST" class="d-none">
         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
     </form>
@@ -183,6 +195,23 @@ if (isset($_POST['submit'])) {
                                     value="<?php echo htmlspecialchars($codigo_sala, ENT_QUOTES, 'UTF-8'); ?>"
                                     required />
                                 <button class="btn btn-outline-secondary" type="button" id="copiarCodigo"><?php echo t('btn_copiar_codigo'); ?></button>
+                            </div>
+
+                            <div class="mt-3">
+                                <button class="btn btn-outline-dark w-100" type="button" id="btnGerarQr"
+                                    aria-expanded="false" aria-controls="painelQr"><?php echo t('btn_gerar_qr'); ?></button>
+                            </div>
+                            <div id="painelQr" class="painel-qr d-none mt-3">
+                                <label for="enderecoQr" class="form-label"><?php echo t('label_endereco_qr'); ?></label>
+                                <input type="url" class="form-control mb-2" id="enderecoQr" autocomplete="off" spellcheck="false">
+                                <div id="avisoQr" class="alert alert-warning py-2 d-none" role="alert"></div>
+                                <div id="areaQr" class="d-none">
+                                    <div class="text-center">
+                                        <canvas id="canvasQr" class="qr-canvas" role="img"></canvas>
+                                    </div>
+                                    <button class="btn btn-dark w-100 mt-3" type="button" id="btnSalvarQr"><?php echo t('btn_salvar_qr'); ?></button>
+                                </div>
+                                <p class="form-text mb-0 mt-2"><?php echo t('texto_qr_ajuda'); ?></p>
                             </div><br>
 
                             <label for="tempo" class="form-label"><?php echo t('label_tempo_fala'); ?></label>
@@ -207,31 +236,10 @@ if (isset($_POST['submit'])) {
         </div>
     </div>
 
-    <script>
-        const textoCopiarCodigoOriginal = <?php echo tj('btn_copiar_codigo'); ?>;
-        const textoCopiado = <?php echo tj('texto_copiado'); ?>;
-
-        // "Sair" agora é um POST com token CSRF (antes era um link GET)
-        document.getElementById("btnSair").addEventListener("click", () => {
-            document.getElementById("formLogout").submit();
-        });
-
-        document.getElementById("copiarCodigo").addEventListener("click", () => {
-            const campo = document.getElementById("codigo");
-            const botao = document.getElementById("copiarCodigo");
-
-            navigator.clipboard.writeText(campo.value).then(() => {
-                botao.textContent = textoCopiado;
-                setTimeout(() => {
-                    botao.textContent = textoCopiarCodigoOriginal;
-                }, 1500);
-            }).catch(() => {
-                // fallback para navegadores/contextos sem permissão de clipboard
-                campo.select();
-                document.execCommand("copy");
-            });
-        });
-    </script>
+    <script src="../assets/lang.js"></script>
+    <script src="../assets/auth.js"></script>
+    <script src="../assets/vendor/qrcode.js"></script>
+    <script src="../assets/qr.js"></script>
 </body>
 
 </html>

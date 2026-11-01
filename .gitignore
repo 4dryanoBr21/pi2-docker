@@ -9,3 +9,7 @@ nginx/certs/*
 .DS_Store
 Thumbs.db
 *.log
+
+# Core dumps: guardam as variáveis de ambiente (inclusive a senha do banco)
+core
+core.*

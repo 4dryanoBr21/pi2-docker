@@ -62,11 +62,23 @@ $csrf = csrf_token();
 
 <body>
   <?php idioma_switch_html(); ?>
+  <script src="../assets/lang.js"></script>
+  <div id="app-config"
+       data-id-sala="<?php echo $id_sala; ?>"
+       data-csrf="<?php echo $csrf; ?>"
+       data-is-criador="true"
+       data-textos="<?php echo htmlspecialchars(json_encode([
+         "confirmarEncerrarSala" => t("confirm_encerrar_sala"),
+         "confirmarSairConta" => t("confirm_sair_encerra_sala"),
+         "erroFecharSala" => t("erro_fechar_sala"),
+         "passarVez" => t("js_passar_vez"),
+         "iniciarProximo" => t("btn_iniciar_proximo"),
+         "nenhumParticipanteAinda" => t("texto_nenhum_participante_ainda")
+       ]), ENT_QUOTES, 'UTF-8'); ?>"></div>
   <form id="formLogout" action="../functions/logout.php" method="POST" class="d-none">
     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8'); ?>">
   </form>
-  <button type="button" id="btnSairConta" class="btn btn-sm btn-outline-dark"
-    style="position:absolute; top:16px; right:16px;"><?php echo t('btn_sair'); ?></button>
+  <button type="button" id="btnSairConta" class="btn btn-sm btn-outline-dark btn-sair-conta"><?php echo t('btn_sair'); ?></button>
   <div class="container">
     <div class="row justify-content-center">
       <div class="col-12 col-sm-10 col-md-8 col-lg-6">
@@ -85,9 +97,9 @@ $csrf = csrf_token();
               <?php echo t('texto_tempo_fala_participante'); ?> <?php echo $tempo_fala; ?>
             </p>
 
-            <div id="painelFalando" class="text-center p-4 mb-3 rounded shadow-sm" style="background:#f5f5f5;" aria-live="polite">
+            <div id="painelFalando" class="text-center p-4 mb-3 rounded shadow-sm painel-falando" aria-live="polite">
               <div id="semFalante"><?php echo t('texto_nenhum_falando'); ?></div>
-              <div id="comFalante" style="display:none;">
+              <div id="comFalante" class="d-none">
                 <h4 class="fw-bold mb-1" id="nomeFalante"></h4>
                 <div class="display-4 fw-bold" id="contadorFala">00:00</div>
               </div>
@@ -98,8 +110,8 @@ $csrf = csrf_token();
             </div>
 
             <h6 class="fw-bold"><?php echo t('titulo_participantes_presentes'); ?></h6>
-            <div id="listaPresentes" class="d-grid gap-2 overflow-auto shadow p-3 mb-2 bg-body-tertiary rounded"
-              style="max-height: 30vh;" aria-live="polite">
+            <div id="listaPresentes" class="d-grid gap-2 overflow-auto shadow p-3 mb-2 bg-body-tertiary rounded lista-presentes"
+              aria-live="polite">
             </div>
           </div>
         </div>
@@ -108,169 +120,8 @@ $csrf = csrf_token();
   </div>
 
   <script src="../assets/app.js"></script>
-  <script>
-    const idSala = <?php echo (int) $id_sala; ?>;
-    const csrfToken = "<?php echo htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8'); ?>";
-
-    const textos = {
-      confirmarEncerrarSala: <?php echo tj('confirm_encerrar_sala'); ?>,
-      confirmarSairConta: <?php echo tj('confirm_sair_encerra_sala'); ?>,
-      erroFecharSala: <?php echo tj('erro_fechar_sala'); ?>,
-      passarVez: <?php echo tj('js_passar_vez'); ?>,
-      iniciarProximo: <?php echo tj('btn_iniciar_proximo'); ?>,
-      nenhumParticipanteAinda: <?php echo tj('texto_nenhum_participante_ainda'); ?>
-    };
-
-    // O SERVIDOR é a única fonte da verdade sobre o tempo. Aqui guardamos
-    // apenas "em que instante do relógio deste navegador" cada contagem
-    // começou/termina e recalculamos a tela a partir disso. Assim, se o
-    // navegador atrasar os timers (aba em segundo plano), o valor mostrado
-    // continua certo assim que a aba volta — antes o cronômetro "andava
-    // devagar" porque descontava 1 segundo por tick, qualquer que fosse o
-    // tempo real decorrido.
-    const TOLERANCIA_MS = 1500;        // diferença aceitável antes de ressincronizar
-    let inicioReuniaoMs = null;        // instante (ms) em que a reunião começou
-    let fimFalaMs = null;              // instante (ms) em que a fala atual termina
-    let speakerAtualId = null;
-    let avancando = false;
-    let ultimoAvancoMs = 0;
-
-    // "Sair": apaga a sala junto, então pede confirmação (e agora é POST + CSRF)
-    document.getElementById("btnSairConta").addEventListener("click", function () {
-      if (confirm(textos.confirmarSairConta)) {
-        document.getElementById("formLogout").submit();
-      }
-    });
-
-    document.getElementById("btnEncerrarSala").addEventListener("click", function () {
-      if (!confirm(textos.confirmarEncerrarSala)) {
-        return;
-      }
-
-      const form = new FormData();
-      form.append("id_sala", idSala);
-      form.append("csrf_token", csrfToken);
-
-      fetch("../functions/fechar_sala.php", { method: "POST", body: form })
-        .then(res => res.text())
-        .then(ret => {
-          if (ret.trim() === "ok") {
-            window.location.href = "criar.php";
-          } else {
-            alert(textos.erroFecharSala);
-          }
-        })
-        .catch(() => alert(textos.erroFecharSala));
-    });
-
-    function avancarFala() {
-      const agora = Date.now();
-      // evita duplo clique e martelar o servidor se algo falhar
-      if (avancando || agora - ultimoAvancoMs < 1500) return;
-      avancando = true;
-      ultimoAvancoMs = agora;
-
-      const form = new FormData();
-      form.append("id_sala", idSala);
-      form.append("csrf_token", csrfToken);
-      // diz ao servidor QUEM acreditamos estar falando: se já mudou (outro
-      // clique, o próprio participante encerrou...), ele não avança de novo
-      // e ninguém é pulado
-      form.append("falando_atual", speakerAtualId === null ? 0 : speakerAtualId);
-
-      fetch("../functions/avancar_fala.php", { method: "POST", body: form })
-        .then(res => res.json())
-        .then(() => {
-          avancando = false;
-          atualizarEstado();
-        })
-        .catch(() => { avancando = false; });
-    }
-
-    document.getElementById("btnProximo").addEventListener("click", avancarFala);
-
-    function desenharRelogios() {
-      if (inicioReuniaoMs !== null) {
-        const decorrido = Math.floor((Date.now() - inicioReuniaoMs) / 1000);
-        document.getElementById("tempoReuniao").textContent = MI.formatarTempo(decorrido);
-      }
-
-      if (fimFalaMs !== null) {
-        const restante = Math.max(0, Math.ceil((fimFalaMs - Date.now()) / 1000));
-        document.getElementById("contadorFala").textContent = MI.formatarTempo(restante);
-        if (restante === 0) {
-          avancarFala();
-        }
-      }
-    }
-
-    function atualizarEstado() {
-      fetch("../functions/estado_sala.php?id_sala=" + idSala, { cache: "no-store" })
-        .then(res => res.json())
-        .then(estado => {
-          if (estado.erro) {
-            window.location.href = "criar.php";
-            return;
-          }
-
-          const agora = Date.now();
-
-          const novoInicio = agora - estado.reuniao_segundos * 1000;
-          if (inicioReuniaoMs === null || Math.abs(novoInicio - inicioReuniaoMs) > TOLERANCIA_MS) {
-            inicioReuniaoMs = novoInicio;
-          }
-
-          if (estado.falando) {
-            document.getElementById("semFalante").style.display = "none";
-            document.getElementById("comFalante").style.display = "block";
-            document.getElementById("nomeFalante").textContent = estado.falando.nome;
-
-            // Ressincroniza quando o orador muda OU quando o relógio local
-            // se afastou do servidor além da tolerância. Pequenas variações
-            // (latência da rede) não mexem no cronômetro na tela.
-            const novoFim = agora + estado.falando.restante_segundos * 1000;
-            if (speakerAtualId !== estado.falando.id_participante || fimFalaMs === null
-              || Math.abs(novoFim - fimFalaMs) > TOLERANCIA_MS) {
-              speakerAtualId = estado.falando.id_participante;
-              fimFalaMs = novoFim;
-            }
-            document.getElementById("btnProximo").textContent = textos.passarVez;
-          } else {
-            document.getElementById("semFalante").style.display = "block";
-            document.getElementById("comFalante").style.display = "none";
-            speakerAtualId = null;
-            fimFalaMs = null;
-            document.getElementById("btnProximo").textContent = textos.iniciarProximo;
-          }
-
-          MI.renderizarPresentes(document.getElementById("listaPresentes"), estado, {
-            textoVazio: textos.nenhumParticipanteAinda
-          });
-
-          desenharRelogios();
-        })
-        .catch(err => console.error("Erro ao buscar estado da sala:", err));
-    }
-
-    // redesenha 4x por segundo a partir dos instantes guardados acima
-    setInterval(desenharRelogios, 250);
-
-    function verificarSessao() {
-      fetch("../functions/verifica_sessao.php", { cache: "no-store" })
-        .then(res => res.json())
-        .then(estado => {
-          if (!estado.valido) {
-            window.location.href = "login.php";
-          }
-        })
-        .catch(err => console.error("Erro ao verificar sessão:", err));
-    }
-
-    setInterval(verificarSessao, 5000);
-
-    setInterval(atualizarEstado, 3000);
-    atualizarEstado();
-  </script>
+  <script src="../assets/sala.js"></script>
+  <script src="../assets/sala-init.js"></script>
 </body>
 
 </html>

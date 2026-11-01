@@ -105,4 +105,16 @@ return [
     // seletor de idioma
     'idioma_pt_titulo' => 'Português (Brasil)',
     'idioma_es_titulo' => 'Español (Argentina)',
+
+    // QR code da sala (criar.php)
+    'btn_gerar_qr' => 'Gerar QR code',
+    'btn_ocultar_qr' => 'Ocultar QR code',
+    'btn_salvar_qr' => 'Salvar QR code (PNG)',
+    'label_endereco_qr' => 'Endereço do sistema que o QR code vai abrir',
+    'texto_qr_ajuda' => 'O QR code leva o participante à tela inicial com o código da sala já digitado. Ele só funciona depois que a sala for criada.',
+    'aviso_qr_localhost' => 'Este endereço (localhost) só abre no seu computador. Para os participantes, acesse o sistema pelo endereço do ngrok ou pelo IP do computador na rede e gere o QR code de novo, ou digite acima o endereço correto.',
+    'erro_qr_codigo' => 'Informe um código de 4 a 20 letras ou números para gerar o QR code.',
+    'erro_qr_endereco' => 'Endereço inválido ou longo demais. Use um endereço completo, como https://meusite.com/index.php.',
+    'legenda_qr_codigo' => 'Código da sala:',
+    'aria_qr_canvas' => 'QR code para entrar na sala %s',
 ];

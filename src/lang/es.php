@@ -105,4 +105,16 @@ return [
     // selector de idioma
     'idioma_pt_titulo' => 'Português (Brasil)',
     'idioma_es_titulo' => 'Español (Argentina)',
+
+    // Código QR de la sala (criar.php)
+    'btn_gerar_qr' => 'Generar código QR',
+    'btn_ocultar_qr' => 'Ocultar código QR',
+    'btn_salvar_qr' => 'Guardar código QR (PNG)',
+    'label_endereco_qr' => 'Dirección del sistema que abrirá el código QR',
+    'texto_qr_ajuda' => 'El código QR lleva al participante a la pantalla inicial con el código de la sala ya escrito. Solo funciona después de crear la sala.',
+    'aviso_qr_localhost' => 'Esta dirección (localhost) solo abre en tu computadora. Para los participantes, accede al sistema por la dirección de ngrok o por la IP de la computadora en la red y genera el código QR de nuevo, o escribe arriba la dirección correcta.',
+    'erro_qr_codigo' => 'Ingresa un código de 4 a 20 letras o números para generar el código QR.',
+    'erro_qr_endereco' => 'Dirección inválida o demasiado larga. Usa una dirección completa, como https://misitio.com/index.php.',
+    'legenda_qr_codigo' => 'Código de la sala:',
+    'aria_qr_canvas' => 'Código QR para entrar a la sala %s',
 ];

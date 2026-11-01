@@ -123,6 +123,8 @@ $_SESSION['login_failures'] = 0;
     <link href='https://fonts.googleapis.com/css?family=Montserrat' rel='stylesheet'>
     <link rel="stylesheet" href="../style.css">
     <link rel="shortcut icon" href="../img/MI_legenda_branco.png" type="image/x-icon">
+    <script src="../assets/lang.js"></script>
+    <script src="../assets/auth.js"></script>
     <title><?php echo t('title_login'); ?></title>
 </head>
 
@@ -167,16 +169,6 @@ $_SESSION['login_failures'] = 0;
         </div>
     </div>
 
-    <script>
-        document.getElementById("cad").addEventListener("click", () => {
-            window.open("register.php", "_self");
-        });
-
-        // "Sair" agora é um POST com token CSRF (antes era um link GET)
-        document.getElementById("btnSair").addEventListener("click", () => {
-            document.getElementById("formLogout").submit();
-        });
-    </script>
 </body>
 
 </html>

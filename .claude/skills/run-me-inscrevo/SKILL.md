@@ -39,33 +39,33 @@ The application is driven by `chromium-cli`. Use the following script to perform
 cat << 'DRIVER' | chromium-cli
 # 1. Register a new user
 goto http://localhost:8192/pages/register.php
-type #nome, "Test User"
-type #email, "test@example.com"
-type #senha, "Password123!"
-type #confirmar_senha, "Password123!"
-click #btn-register
-wait_for_element #mensagem-sucesso
+type #exampleInput1, "TestUser"
+type #exampleInputEmail1, "test@example.com"
+type #exampleInputPassword1, "Password123!"
+click button[name=submit]
+wait_for_element .alert-success
 
-# 2. Login
+# 2. Login (accepts the username or the e-mail)
 goto http://localhost:8192/pages/login.php
-type #email, "test@example.com"
-type #senha, "Password123!"
-click #btn-login
-wait_for_element #btn-criar-sala
+type #identificador, "TestUser"
+type #password, "Password123!"
+click button[name=submit]
+wait_for_element #copiarCodigo
 
-# 3. Create a room
-click #btn-criar-sala
-type #nome_sala, "Testing Room"
-type #codigo_sala, "TEST123"
-type #tempo_fala, "2"
-click #btn-salvar-sala
-wait_for_element #btn-sair
+# 3. Create a room (the code field already comes filled with a random code;
+#    the speaking time must be HH:MM or HH:MM:SS)
+type #nome, "Testing Room"
+type #tempo, "00:02:00"
+click button[name=submit]
+wait_for_element #btnEncerrarSala
 
-# 4. Join as participant (in a new session/incognito if needed, but for smoke test we check the page)
+# 4. Join as participant (use a new session/incognito window, because the
+#    creator session is the one that is open here; use the room code shown on the creator page)
 goto http://localhost:8192/index.php
-type #codigo, "TEST123"
-click #btn-entrar
-wait_for_element #btn-levantar-mao
+type #codigo, "<room code>"
+type #nome, "Guest"
+click button[type=submit]
+wait_for_element #mao
 
 # Take a final screenshot of the participant view
 screenshot participant_view.png

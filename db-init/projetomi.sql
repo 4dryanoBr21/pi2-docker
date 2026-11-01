@@ -35,7 +35,10 @@ CREATE TABLE `participante` (
   `data_hora_solicitacao` datetime(3) DEFAULT NULL,
   `ultima_atividade` datetime DEFAULT NULL,
   PRIMARY KEY (`id_participante`),
-  KEY `fk_sala_atual` (`fk_sala_atual`)
+  KEY `fk_sala_atual` (`fk_sala_atual`),
+  -- índice da consulta de fila (a tela consulta a cada 2 s); o mesmo da
+  -- migração 002, que instalações novas não recebiam
+  KEY `idx_fksala_hora` (`fk_sala_atual`, `data_hora_solicitacao`, `id_participante`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------

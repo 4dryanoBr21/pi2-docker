@@ -51,3 +51,29 @@ body {
 .btn-close {
     position: absolute; top: 10px; right: 10px;
 }
+
+.btn-sair-conta {
+    position: absolute; top: 16px; right: 16px;
+}
+
+.painel-falando {
+    background: #f5f5f5;
+}
+
+.lista-presentes {
+    max-height: 30vh;
+}
+
+.btn-mao-estilo {
+    font-size: clamp(50px, 15vw, 75px);
+}
+
+/* QR code da tela "Criar sala" */
+.qr-canvas {
+    width: 100%;
+    max-width: 320px;
+    height: auto;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+}

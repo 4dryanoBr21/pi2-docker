@@ -1,5 +1,10 @@
 FROM php:8.3-apache
 
+# PHP2Shell (CVE-2026-109618 e CVE-2026-109619): a correção está no PHP 8.3.36.
+# Se o Docker reaproveitar uma imagem base antiga (em cache), o build para aqui
+# em vez de subir um servidor vulnerável.
+RUN php -r 'if (version_compare(PHP_VERSION, "8.3.36", "<")) { fwrite(STDERR, "ERRO: PHP " . PHP_VERSION . " tem as falhas PHP2Shell. Reconstrua com: docker compose build --pull --no-cache\n"); exit(1); }'
+
 # Só mysqli é usado pelo código (functions/conexao.php).
 # php.ini de PRODUÇÃO: display_errors desligado (erros vão para o log, não
 # para a tela do usuário), entre outras proteções padrão.

@@ -5,3 +5,7 @@ nginx
 db-init
 db-migrations
 *.md
+core
+core.*
+src/core
+src/core.*

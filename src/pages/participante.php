@@ -64,6 +64,22 @@ $csrf = csrf_token();
 
 <body>
     <?php idioma_switch_html(); ?>
+    <script src="../assets/lang.js"></script>
+    <div id="app-config"
+         data-id-sala="<?php echo $id_sala; ?>"
+         data-id-participante="<?php echo $id_participante; ?>"
+         data-csrf="<?php echo $csrf; ?>"
+         data-is-criador="false"
+         data-textos="<?php echo htmlspecialchars(json_encode([
+           "levanteAMao" => t("texto_levante_mao"),
+           "posicaoFila" => t("texto_posicao_fila"),
+           "abaixarMao" => t("aria_abaixar_mao"),
+           "levantarMao" => t("aria_levantar_mao"),
+           "encerrarFala" => t("aria_encerrar_fala"),
+           "nenhumParticipanteAinda" => t("texto_nenhum_participante_ainda"),
+           "voceSufixo" => t("texto_voce_sufixo"),
+           "erroSairSala" => t("erro_sair_sala")
+         ]), ENT_QUOTES, 'UTF-8'); ?>"></div>
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-12 col-sm-10 col-md-8 col-lg-6">
@@ -75,25 +91,25 @@ $csrf = csrf_token();
                     <div class="card-body">
                         <h2 class="text-center fw-bold"><?php echo htmlspecialchars($nome_sala); ?></h2>
 
-                        <div id="painelEstado" class="text-center p-4 mb-3 rounded shadow-sm"
-                            style="background:#f5f5f5;" aria-live="polite">
+                        <div id="painelEstado" class="text-center p-4 mb-3 rounded shadow-sm painel-falando"
+                            aria-live="polite">
                             <div id="estadoAguardando">
                                 <p class="mb-1"><?php echo t('texto_aguardando'); ?></p>
                                 <p id="posicaoFila" class="text-muted"><?php echo t('texto_levante_mao'); ?></p>
                             </div>
-                            <div id="estadoFalando" style="display:none;">
+                            <div id="estadoFalando" class="d-none">
                                 <h4 class="fw-bold mb-1"><?php echo t('texto_sua_vez'); ?></h4>
                                 <div class="display-4 fw-bold" id="contadorFala">00:00</div>
                             </div>
                         </div>
 
                         <div class="d-grid gap-2 mb-3">
-                            <button id="mao" class="btn" type="button" style="font-size: clamp(50px, 15vw, 75px);" aria-label="<?php echo te('aria_levantar_mao'); ?>">🤚</button>
+                            <button id="mao" class="btn btn-mao-estilo" type="button" aria-label="<?php echo te('aria_levantar_mao'); ?>">🤚</button>
                         </div>
 
                         <h6 class="fw-bold"><?php echo t('titulo_participantes_presentes'); ?></h6>
-                        <div id="listaPresentes" class="d-grid gap-2 overflow-auto shadow p-3 mb-2 bg-body-tertiary rounded"
-                            style="max-height: 30vh;" aria-live="polite">
+                        <div id="listaPresentes" class="d-grid gap-2 overflow-auto shadow p-3 mb-2 bg-body-tertiary rounded lista-presentes"
+                            aria-live="polite">
                         </div>
                     </div>
                 </div>
@@ -102,147 +118,8 @@ $csrf = csrf_token();
     </div>
 
     <script src="../assets/app.js"></script>
-    <script>
-        const idSala = <?php echo (int) $id_sala; ?>;
-        const idParticipante = <?php echo (int) $id_participante; ?>;
-        const csrfToken = "<?php echo htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8'); ?>";
-
-        // O servidor é a fonte da verdade sobre o tempo; aqui guardamos só o
-        // instante (relógio deste navegador) em que a fala termina e
-        // recalculamos a tela a partir dele. Não depende de os timers do
-        // navegador dispararem exatamente a cada segundo.
-        const TOLERANCIA_MS = 1500;
-        let fimFalaMs = null;
-        let maoLevantada = false;
-        let speakerAtualId = null;
-        let enviandoMao = false;
-
-        const textos = {
-            levanteAMao: <?php echo tj('texto_levante_mao'); ?>,
-            posicaoFila: <?php echo tj('texto_posicao_fila'); ?>,
-            abaixarMao: <?php echo tj('aria_abaixar_mao'); ?>,
-            levantarMao: <?php echo tj('aria_levantar_mao'); ?>,
-            encerrarFala: <?php echo tj('aria_encerrar_fala'); ?>,
-            nenhumParticipanteAinda: <?php echo tj('texto_nenhum_participante_ainda'); ?>,
-            voceSufixo: <?php echo tj('texto_voce_sufixo'); ?>,
-            erroSairSala: <?php echo tj('erro_sair_sala'); ?>
-        };
-
-        function formatarPosicaoFila(posicao, total) {
-            // textos.posicaoFila vem do PHP no formato usado por sprintf/vsprintf
-            // (ex.: "Você é o %dº da fila (%d no total)."); replicamos a mesma
-            // lógica em JS trocando os "%d" na ordem em que aparecem.
-            let indice = 0;
-            const valores = [posicao, total];
-            return textos.posicaoFila.replace(/%d/g, () => valores[indice++]);
-        }
-
-        function desenharRelogio() {
-            if (fimFalaMs !== null) {
-                const restante = Math.max(0, Math.ceil((fimFalaMs - Date.now()) / 1000));
-                document.getElementById("contadorFala").textContent = MI.formatarTempo(restante);
-            }
-        }
-
-        // Este mesmo endpoint também avisa quando a sala foi encerrada ou o
-        // participante foi removido (responde com "erro"): era a função do
-        // antigo verifica_sala.php, que consultava o servidor 1x por segundo.
-        function atualizarEstado() {
-            fetch("../functions/estado_sala.php?id_sala=" + idSala, { cache: "no-store" })
-                .then(res => res.json())
-                .then(estado => {
-                    if (estado.erro) {
-                        window.location.href = "../index.php";
-                        return;
-                    }
-
-                    const agora = Date.now();
-                    const souEu = estado.falando && estado.falando.id_participante === idParticipante;
-                    const mao = document.getElementById("mao");
-
-                    if (souEu) {
-                        document.getElementById("estadoAguardando").style.display = "none";
-                        document.getElementById("estadoFalando").style.display = "block";
-
-                        const novoFim = agora + estado.falando.restante_segundos * 1000;
-                        if (speakerAtualId !== estado.falando.id_participante || fimFalaMs === null
-                            || Math.abs(novoFim - fimFalaMs) > TOLERANCIA_MS) {
-                            speakerAtualId = estado.falando.id_participante;
-                            fimFalaMs = novoFim;
-                        }
-                        maoLevantada = false;
-                    } else {
-                        document.getElementById("estadoAguardando").style.display = "block";
-                        document.getElementById("estadoFalando").style.display = "none";
-                        speakerAtualId = null;
-                        fimFalaMs = null;
-
-                        const posicao = estado.fila.findIndex(p => p.id_participante === idParticipante);
-                        if (posicao === -1) {
-                            document.getElementById("posicaoFila").textContent = textos.levanteAMao;
-                            maoLevantada = false;
-                        } else {
-                            document.getElementById("posicaoFila").textContent =
-                                formatarPosicaoFila(posicao + 1, estado.fila.length);
-                            maoLevantada = true;
-                        }
-                    }
-
-                    // ❌ tem dois significados: abaixar a mão (na fila) ou
-                    // encerrar a própria fala (quando é a sua vez)
-                    mao.textContent = (maoLevantada || souEu) ? "❌" : "🤚";
-                    mao.setAttribute(
-                        "aria-label",
-                        souEu ? textos.encerrarFala : (maoLevantada ? textos.abaixarMao : textos.levantarMao)
-                    );
-
-                    MI.renderizarPresentes(document.getElementById("listaPresentes"), estado, {
-                        textoVazio: textos.nenhumParticipanteAinda,
-                        idPropio: idParticipante,
-                        sufixoVoce: textos.voceSufixo
-                    });
-
-                    desenharRelogio();
-                })
-                .catch(err => console.error("Erro ao buscar estado da sala:", err));
-        }
-
-        document.getElementById("mao").addEventListener("click", () => {
-            if (enviandoMao) return; // evita duplo clique (levantar e abaixar sem querer)
-            enviandoMao = true;
-
-            fetch("../functions/salvar_hora.php", {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: "id_participante=" + idParticipante + "&csrf_token=" + encodeURIComponent(csrfToken)
-            })
-                .then(res => res.text())
-                .then(() => { enviandoMao = false; atualizarEstado(); })
-                .catch(err => { enviandoMao = false; console.error("Erro ao alternar horário:", err); });
-        });
-
-        document.getElementById("btnSair").addEventListener("click", function () {
-            const formData = new FormData();
-            formData.append("id_participante", idParticipante);
-            formData.append("csrf_token", csrfToken);
-
-            fetch("../functions/sair_sala.php", { method: "POST", body: formData })
-                .then(res => res.text())
-                .then(ret => {
-                    if (ret.trim() === "ok") {
-                        window.location.href = "../index.php";
-                    } else {
-                        alert(textos.erroSairSala);
-                    }
-                })
-                .catch(err => console.error("Erro:", err));
-        });
-
-        setInterval(desenharRelogio, 250);
-        setInterval(atualizarEstado, 2000);
-        atualizarEstado();
-    </script>
-
+    <script src="../assets/sala.js"></script>
+    <script src="../assets/sala-init.js"></script>
 </body>
 
 </html>
