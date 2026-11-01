@@ -4,6 +4,7 @@ require_once __DIR__ . '/../functions/csrf.php';
 require_once __DIR__ . '/../functions/idioma.php';
 require_once __DIR__ . '/../functions/util.php';
 require_once __DIR__ . '/../functions/auth_criador.php';
+require_once __DIR__ . '/../functions/sala_helpers.php';
 
 if (!criador_autenticado($mysqli)) {
     destruir_sessao();
@@ -44,6 +45,8 @@ function gerar_codigo_sala_aleatorio()
 $erro = "";
 $nome_sala = "";
 $tempo = "";
+$max_participantes_valor = "";
+$max_fila_valor = "";
 $codigo_sala = gerar_codigo_sala_aleatorio();
 
 if (isset($_POST['submit'])) {
@@ -54,6 +57,12 @@ if (isset($_POST['submit'])) {
         $nome_sala = post_texto('nome');
         $tempo = post_texto('tempo');
         $codigo_sala = post_texto('codigo');
+
+        // Limites opcionais (vazio ou 0 = sem limite).
+        $max_participantes_valor = post_texto('max_participantes');
+        $max_fila_valor = post_texto('max_fila');
+        $max_participantes = normalizar_limite($max_participantes_valor);
+        $max_fila = normalizar_limite($max_fila_valor);
 
         // Valida o tempo de fala no SERVIDOR (o <input type="time"> do
         // navegador não é garantia): aceita HH:MM ou HH:MM:SS, exige tempo
@@ -78,6 +87,8 @@ if (isset($_POST['submit'])) {
             $erro = t('erro_codigo_formato');
         } elseif ($tempo_normalizado === null) {
             $erro = t('erro_tempo_invalido');
+        } elseif ($max_participantes === null || $max_fila === null) {
+            $erro = t('erro_limite_invalido');
         } else {
             try {
                 if (db_fetch_one($mysqli, "SELECT id_sala FROM sala WHERE nome_sala = ?", "s", $nome_sala) !== null) {
@@ -91,11 +102,13 @@ if (isset($_POST['submit'])) {
                     try {
                         db_exec(
                             $mysqli,
-                            "INSERT INTO sala (nome_sala, codigo_sala, tempo_de_fala) VALUES (?, ?, ?)",
-                            "sss",
+                            "INSERT INTO sala (nome_sala, codigo_sala, tempo_de_fala, max_participantes, max_fila) VALUES (?, ?, ?, ?, ?)",
+                            "sssii",
                             $nome_sala,
                             $codigo_sala,
-                            $tempo_normalizado
+                            $tempo_normalizado,
+                            $max_participantes,
+                            $max_fila
                         );
                         $id_sala = (int) $mysqli->insert_id;
 
@@ -225,6 +238,19 @@ if (isset($_POST['submit'])) {
                                     title="Formato esperado: HH:MM ou HH:MM:SS">
                             </div>
                             <div class="form-text mb-3"></div><br>
+
+                            <label for="max_participantes" class="form-label"><?php echo t('label_max_participantes'); ?></label>
+                            <input name="max_participantes" type="number" class="form-control" id="max_participantes"
+                                min="0" max="1000" step="1" inputmode="numeric"
+                                placeholder="<?php echo te('placeholder_sem_limite'); ?>"
+                                value="<?php echo htmlspecialchars($max_participantes_valor, ENT_QUOTES, 'UTF-8'); ?>"><br>
+
+                            <label for="max_fila" class="form-label"><?php echo t('label_max_fila'); ?></label>
+                            <input name="max_fila" type="number" class="form-control" id="max_fila"
+                                min="0" max="1000" step="1" inputmode="numeric"
+                                placeholder="<?php echo te('placeholder_sem_limite'); ?>"
+                                value="<?php echo htmlspecialchars($max_fila_valor, ENT_QUOTES, 'UTF-8'); ?>">
+                            <div class="form-text mb-3"><?php echo t('texto_limites_ajuda'); ?></div><br>
 
                             <div class="d-grid gap-2">
                                 <button class="btn btn-dark" name="submit" type="submit"><?php echo t('btn_criar'); ?></button>

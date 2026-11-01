@@ -16,6 +16,10 @@ CREATE TABLE `sala` (
   `data_inicio` datetime DEFAULT NULL,
   `fk_participante_falando` int(11) DEFAULT NULL,
   `fala_inicio` datetime DEFAULT NULL,
+  -- limites da sala (0 = sem limite): participantes presentes e pautas
+  -- (pessoas com a mão levantada ao mesmo tempo)
+  `max_participantes` int(11) NOT NULL DEFAULT 0,
+  `max_fila` int(11) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id_sala`),
   -- o código é a "chave de entrada" da sala: tem que ser único de verdade
   -- (não só por checagem na aplicação, que falha com requisições simultâneas)

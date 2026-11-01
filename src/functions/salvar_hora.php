@@ -64,24 +64,19 @@ if ($falando_agora !== null) {
     exit;
 }
 
-// Alterna a mão em UM único UPDATE (atômico): dois cliques simultâneos não
-// conseguem se atropelar. A hora vem do relógio do banco, com milissegundos,
-// a mesma fonte usada para ordenar a fila.
-db_exec(
-    $mysqli,
-    "UPDATE participante
-        SET data_hora_solicitacao = IF(data_hora_solicitacao IS NULL, NOW(3), NULL),
-            ultima_atividade = NOW()
-      WHERE id_participante = ?",
-    "i",
-    $id_participante
-);
+// Alterna a mão (transação atômica; respeita o limite de pautas da sala).
+$resultado = alternar_mao($mysqli, $id_sala, $id_participante);
 
-$atual = db_fetch_one(
-    $mysqli,
-    "SELECT data_hora_solicitacao FROM participante WHERE id_participante = ?",
-    "i",
-    $id_participante
-);
+if ($resultado === 'fila_cheia') {
+    http_response_code(409);
+    echo "fila_cheia";
+    exit;
+}
 
-echo ($atual !== null && $atual['data_hora_solicitacao'] !== null) ? "hora" : "null";
+if ($resultado === 'inexistente') {
+    http_response_code(404);
+    echo "erro";
+    exit;
+}
+
+echo $resultado; // "hora" (mão levantada) ou "null" (mão abaixada)

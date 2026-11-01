@@ -118,6 +118,7 @@ Os scripts de `db-init/` rodam apenas na primeira criação. Para bancos existen
 1. **Backup**: `docker compose exec db sh -c 'mysqldump -u root -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"' > backup.sql`
 2. **Suba a nova versão**: `docker compose up -d --build`
 3. **Aplique a migração**: `docker compose exec -T db sh -c 'mariadb -u root -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"' < db-migrations/001_constraints_e_ajustes.sql`
+4. **Limites da sala** (máximo de participantes e de pautas): aplique também a migração 003, **antes** de usar a nova versão — mesmo comando, trocando o arquivo por `db-migrations/003_limites_sala.sql`.
 
 ---
 

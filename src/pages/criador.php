@@ -27,7 +27,7 @@ db_exec($mysqli, "UPDATE sala SET data_inicio = NOW() WHERE id_sala = ? AND data
 
 $row = db_fetch_one(
     $mysqli,
-    "SELECT nome_sala, codigo_sala, tempo_de_fala FROM sala WHERE id_sala = ?",
+    "SELECT nome_sala, codigo_sala, tempo_de_fala, max_participantes, max_fila FROM sala WHERE id_sala = ?",
     "i",
     $id_sala
 );
@@ -39,6 +39,8 @@ if ($row === null) {
 $nome_sala = htmlspecialchars($row['nome_sala'], ENT_QUOTES, 'UTF-8');
 $codigo_sala = htmlspecialchars($row['codigo_sala'], ENT_QUOTES, 'UTF-8');
 $tempo_fala = htmlspecialchars($row['tempo_de_fala'], ENT_QUOTES, 'UTF-8');
+$max_participantes = (int) $row['max_participantes'];
+$max_fila = (int) $row['max_fila'];
 
 $csrf = csrf_token();
 ?>
@@ -73,7 +75,14 @@ $csrf = csrf_token();
          "erroFecharSala" => t("erro_fechar_sala"),
          "passarVez" => t("js_passar_vez"),
          "iniciarProximo" => t("btn_iniciar_proximo"),
-         "nenhumParticipanteAinda" => t("texto_nenhum_participante_ainda")
+         "nenhumParticipanteAinda" => t("texto_nenhum_participante_ainda"),
+         "infoParticipantesLimite" => t("texto_participantes_limite"),
+         "infoParticipantesSemLimite" => t("texto_participantes_sem_limite"),
+         "infoFilaLimite" => t("texto_fila_limite"),
+         "infoFilaSemLimite" => t("texto_fila_sem_limite"),
+         "limitesSalvos" => t("texto_limites_salvos"),
+         "erroSalvarLimites" => t("erro_salvar_limites"),
+         "erroLimiteInvalido" => t("erro_limite_invalido")
        ]), ENT_QUOTES, 'UTF-8'); ?>"></div>
   <form id="formLogout" action="../functions/logout.php" method="POST" class="d-none">
     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8'); ?>">
@@ -96,6 +105,7 @@ $csrf = csrf_token();
               <?php echo t('texto_tempo_reuniao'); ?> <span id="tempoReuniao">00:00</span> &middot;
               <?php echo t('texto_tempo_fala_participante'); ?> <?php echo $tempo_fala; ?>
             </p>
+            <p id="infoLimites" class="text-center text-muted small mb-3" aria-live="polite"></p>
 
             <div id="painelFalando" class="text-center p-4 mb-3 rounded shadow-sm painel-falando" aria-live="polite">
               <div id="semFalante"><?php echo t('texto_nenhum_falando'); ?></div>
@@ -107,6 +117,28 @@ $csrf = csrf_token();
 
             <div class="d-grid gap-2 mb-3">
               <button id="btnProximo" class="btn btn-dark" type="button"><?php echo t('btn_iniciar_proximo'); ?></button>
+            </div>
+
+            <div class="mb-3">
+              <button type="button" id="btnLimites" class="btn btn-outline-dark w-100"
+                aria-expanded="false" aria-controls="painelLimites">⚙️ <?php echo t('btn_limites_sala'); ?></button>
+              <div id="painelLimites" class="d-none mt-3">
+                <form id="formLimites">
+                  <label for="maxParticipantes" class="form-label"><?php echo t('label_max_participantes'); ?></label>
+                  <input type="number" class="form-control mb-3" id="maxParticipantes" name="max_participantes"
+                    min="0" max="1000" step="1" inputmode="numeric"
+                    placeholder="<?php echo te('placeholder_sem_limite'); ?>"
+                    value="<?php echo $max_participantes > 0 ? $max_participantes : ''; ?>">
+                  <label for="maxFila" class="form-label"><?php echo t('label_max_fila'); ?></label>
+                  <input type="number" class="form-control mb-2" id="maxFila" name="max_fila"
+                    min="0" max="1000" step="1" inputmode="numeric"
+                    placeholder="<?php echo te('placeholder_sem_limite'); ?>"
+                    value="<?php echo $max_fila > 0 ? $max_fila : ''; ?>">
+                  <div class="form-text mb-3"><?php echo t('texto_limites_ajuda'); ?> <?php echo t('texto_limites_nota'); ?></div>
+                  <div id="avisoLimites" class="alert py-2 d-none" role="status"></div>
+                  <button type="submit" class="btn btn-dark w-100"><?php echo t('btn_salvar_limites'); ?></button>
+                </form>
+              </div>
             </div>
 
             <h6 class="fw-bold"><?php echo t('titulo_participantes_presentes'); ?></h6>
@@ -122,6 +154,7 @@ $csrf = csrf_token();
   <script src="../assets/app.js"></script>
   <script src="../assets/sala.js"></script>
   <script src="../assets/sala-init.js"></script>
+  <script src="../assets/limites.js"></script>
 </body>
 
 </html>

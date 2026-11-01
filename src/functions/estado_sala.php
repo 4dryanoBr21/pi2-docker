@@ -61,7 +61,7 @@ limpar_participantes_inativos($mysqli, $id_sala);
 // fuso/relógio entre o container do PHP, o do banco e o navegador.
 $sala = db_fetch_one(
     $mysqli,
-    "SELECT fk_participante_falando, tempo_de_fala, data_inicio,
+    "SELECT fk_participante_falando, tempo_de_fala, data_inicio, max_participantes, max_fila,
             TIMESTAMPDIFF(SECOND, fala_inicio, NOW())  AS decorrido_fala,
             TIMESTAMPDIFF(SECOND, data_inicio, NOW())  AS decorrido_reuniao
        FROM sala
@@ -138,4 +138,9 @@ responder_json(200, [
     'falando' => $falando,
     'fila' => $fila,
     'presentes' => $presentes,
+    // limites da sala (0 = sem limite); as telas mostram "2/5"
+    'limites' => [
+        'participantes' => (int) $sala['max_participantes'],
+        'fila' => (int) $sala['max_fila'],
+    ],
 ]);

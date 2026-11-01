@@ -117,4 +117,22 @@ return [
     'erro_qr_endereco' => 'Endereço inválido ou longo demais. Use um endereço completo, como https://meusite.com/index.php.',
     'legenda_qr_codigo' => 'Código da sala:',
     'aria_qr_canvas' => 'QR code para entrar na sala %s',
+
+    // Limites da sala (index.php, criar.php, criador.php, participante.php)
+    'label_max_participantes' => 'Limite de participantes',
+    'label_max_fila' => 'Limite de pautas (mãos levantadas)',
+    'placeholder_sem_limite' => 'Sem limite',
+    'texto_limites_ajuda' => 'Deixe vazio (ou 0) para não limitar. Máximo: 1000.',
+    'texto_limites_nota' => 'Diminuir um limite não remove ninguém: ele só impede novas entradas e novas mãos levantadas.',
+    'erro_limite_invalido' => 'Os limites devem ser números inteiros de 0 a 1000 (vazio ou 0 = sem limite).',
+    'erro_sala_cheia' => 'A sala está cheia (limite de participantes: %d).',
+    'btn_limites_sala' => 'Limites da sala',
+    'btn_salvar_limites' => 'Salvar limites',
+    'texto_limites_salvos' => 'Limites salvos.',
+    'erro_salvar_limites' => 'Não foi possível salvar os limites. Tente novamente.',
+    'texto_participantes_limite' => 'Participantes: %d/%d',
+    'texto_participantes_sem_limite' => 'Participantes: %d',
+    'texto_fila_limite' => 'Pautas: %d/%d',
+    'texto_fila_sem_limite' => 'Pautas: %d',
+    'texto_fila_cheia' => 'A fila de pautas está cheia. Aguarde abrir uma vaga para levantar a mão.',
 ];

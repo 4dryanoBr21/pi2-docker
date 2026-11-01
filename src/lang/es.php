@@ -117,4 +117,22 @@ return [
     'erro_qr_endereco' => 'Dirección inválida o demasiado larga. Usa una dirección completa, como https://misitio.com/index.php.',
     'legenda_qr_codigo' => 'Código de la sala:',
     'aria_qr_canvas' => 'Código QR para entrar a la sala %s',
+
+    // Límites de la sala (index.php, criar.php, criador.php, participante.php)
+    'label_max_participantes' => 'Límite de participantes',
+    'label_max_fila' => 'Límite de intervenciones (manos levantadas)',
+    'placeholder_sem_limite' => 'Sin límite',
+    'texto_limites_ajuda' => 'Déjalo vacío (o 0) para no limitar. Máximo: 1000.',
+    'texto_limites_nota' => 'Reducir un límite no expulsa a nadie: solo impide nuevas entradas y nuevas manos levantadas.',
+    'erro_limite_invalido' => 'Los límites deben ser números enteros de 0 a 1000 (vacío o 0 = sin límite).',
+    'erro_sala_cheia' => 'La sala está llena (límite de participantes: %d).',
+    'btn_limites_sala' => 'Límites de la sala',
+    'btn_salvar_limites' => 'Guardar límites',
+    'texto_limites_salvos' => 'Límites guardados.',
+    'erro_salvar_limites' => 'No fue posible guardar los límites. Inténtalo de nuevo.',
+    'texto_participantes_limite' => 'Participantes: %d/%d',
+    'texto_participantes_sem_limite' => 'Participantes: %d',
+    'texto_fila_limite' => 'Intervenciones: %d/%d',
+    'texto_fila_sem_limite' => 'Intervenciones: %d',
+    'texto_fila_cheia' => 'La fila de intervenciones está llena. Espera a que se libere un lugar para levantar la mano.',
 ];

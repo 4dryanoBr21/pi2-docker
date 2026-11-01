@@ -34,6 +34,41 @@
       if (el) el.classList.toggle("d-none", !visivel);
     }
 
+    // Troca cada "%d" do texto, na ordem, pelos valores.
+    function formatar(modelo, valores) {
+      let i = 0;
+      return (modelo || "").replace(/%d/g, () => valores[i++]);
+    }
+
+    // Aviso temporário (ex.: fila de pautas cheia ao levantar a mão).
+    let temporizadorAviso = null;
+    function avisar(mensagem) {
+      const el = document.getElementById("avisoSala");
+      if (!el) return;
+      el.textContent = mensagem;
+      mostrar(el, true);
+      clearTimeout(temporizadorAviso);
+      temporizadorAviso = setTimeout(() => mostrar(el, false), 5000);
+    }
+
+    // "Participantes: 3/10 · Pautas: 1/5" (sem a barra quando não há limite).
+    function atualizarInfoLimites(estado) {
+      const el = document.getElementById("infoLimites");
+      if (!el || !estado.limites) return;
+      const qtdParticipantes = estado.presentes.length;
+      const qtdFila = estado.fila.length;
+      const limP = estado.limites.participantes;
+      const limF = estado.limites.fila;
+      el.textContent = [
+        limP > 0
+          ? formatar(textos.infoParticipantesLimite, [qtdParticipantes, limP])
+          : formatar(textos.infoParticipantesSemLimite, [qtdParticipantes]),
+        limF > 0
+          ? formatar(textos.infoFilaLimite, [qtdFila, limF])
+          : formatar(textos.infoFilaSemLimite, [qtdFila])
+      ].join(" · ");
+    }
+
     function formatarPosicaoFila(posicao, total) {
       if (!textos.posicaoFila) return "";
       let indice = 0;
@@ -125,7 +160,12 @@
               const pos = estado.fila.findIndex(p => p.id_participante === idParticipante);
               const posEl = document.getElementById("posicaoFila");
               if (pos === -1) {
-                if (posEl) posEl.textContent = textos.levanteAMao || "";
+                if (posEl) {
+                // fila de pautas cheia: avisa antes mesmo de a pessoa tentar
+                const cheia = estado.limites && estado.limites.fila > 0
+                  && estado.fila.length >= estado.limites.fila;
+                posEl.textContent = (cheia ? textos.filaCheia : textos.levanteAMao) || "";
+              }
                 maoLevantada = false;
               } else {
                 if (posEl) posEl.textContent = formatarPosicaoFila(pos + 1, estado.fila.length);
@@ -138,6 +178,8 @@
               maoEl.setAttribute("aria-label", (estado.falando && estado.falando.id_participante === idParticipante) ? (textos.encerrarFala || "") : (maoLevantada ? (textos.abaixarMao || "") : (textos.levantarMao || "")));
             }
           }
+
+          atualizarInfoLimites(estado);
 
           const list = document.getElementById("listaPresentes");
           if (list) {
@@ -185,7 +227,12 @@
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: "id_participante=" + idParticipante + "&csrf_token=" + encodeURIComponent(csrfToken)
         })
-        .then(() => { enviandoMao = false; atualizarEstado(); })
+        .then(res => res.text())
+        .then(ret => {
+          enviandoMao = false;
+          if (ret.trim() === "fila_cheia") avisar(textos.filaCheia || "");
+          atualizarEstado();
+        })
         .catch(err => { enviandoMao = false; console.error(err); });
       });
     }

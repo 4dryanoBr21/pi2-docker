@@ -56,21 +56,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         limpar_sessao_participante();
                     }
 
-                    db_exec(
-                        $mysqli,
-                        "INSERT INTO participante (nome_participante, fk_sala_atual, ultima_atividade) VALUES (?, ?, NOW())",
-                        "si",
-                        $nome,
-                        (int) $sala['id_sala']
-                    );
-                    $id_participante = $mysqli->insert_id;
+                    // Quem sumiu (aba fechada) não pode ocupar vaga do limite.
+                    limpar_participantes_inativos($mysqli, (int) $sala['id_sala']);
 
-                    session_regenerate_id(true);
-                    $_SESSION['codigo'] = $codigo;
-                    $_SESSION['nome'] = $nome;
-                    $_SESSION['id_participante'] = $id_participante;
-                    header("Location: pages/participante.php");
-                    exit;
+                    // Respeita o limite de participantes da sala (0 = sem limite).
+                    $entrada = entrar_na_sala($mysqli, (int) $sala['id_sala'], $nome);
+
+                    if ($entrada['status'] === 'cheia') {
+                        $erro = t('erro_sala_cheia', $entrada['limite']);
+                    } elseif ($entrada['status'] !== 'ok') {
+                        // a sala foi encerrada neste instante
+                        $erro = t('erro_codigo_invalido');
+                    } else {
+                        session_regenerate_id(true);
+                        $_SESSION['codigo'] = $codigo;
+                        $_SESSION['nome'] = $nome;
+                        $_SESSION['id_participante'] = $entrada['id'];
+                        header("Location: pages/participante.php");
+                        exit;
+                    }
                 }
             } catch (mysqli_sql_exception $e) {
                 error_log('index.php: ' . $e->getMessage());

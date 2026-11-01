@@ -78,7 +78,12 @@ $csrf = csrf_token();
            "encerrarFala" => t("aria_encerrar_fala"),
            "nenhumParticipanteAinda" => t("texto_nenhum_participante_ainda"),
            "voceSufixo" => t("texto_voce_sufixo"),
-           "erroSairSala" => t("erro_sair_sala")
+           "erroSairSala" => t("erro_sair_sala"),
+           "filaCheia" => t("texto_fila_cheia"),
+           "infoParticipantesLimite" => t("texto_participantes_limite"),
+           "infoParticipantesSemLimite" => t("texto_participantes_sem_limite"),
+           "infoFilaLimite" => t("texto_fila_limite"),
+           "infoFilaSemLimite" => t("texto_fila_sem_limite")
          ]), ENT_QUOTES, 'UTF-8'); ?>"></div>
     <div class="container">
         <div class="row justify-content-center">
@@ -102,6 +107,9 @@ $csrf = csrf_token();
                                 <div class="display-4 fw-bold" id="contadorFala">00:00</div>
                             </div>
                         </div>
+
+                        <p id="infoLimites" class="text-center text-muted small mb-3" aria-live="polite"></p>
+                        <div id="avisoSala" class="alert alert-warning py-2 d-none" role="alert"></div>
 
                         <div class="d-grid gap-2 mb-3">
                             <button id="mao" class="btn btn-mao-estilo" type="button" aria-label="<?php echo te('aria_levantar_mao'); ?>">🤚</button>

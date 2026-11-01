@@ -208,3 +208,169 @@ function avancar_fala_sala(mysqli $mysqli, int $id_sala, ?int $esperado = null):
         throw $e;
     }
 }
+
+// ---------------------------------------------------------------------------
+// Limites da sala. 0 = sem limite.
+//   max_participantes: quantas pessoas podem estar na sala ao mesmo tempo.
+//   max_fila: quantas pessoas podem estar com a mão levantada (pautas) ao mesmo
+//             tempo. Quem está falando agora não conta (já saiu da fila).
+// Reduzir um limite não remove ninguém: ele só vale para novas entradas/mãos.
+// ---------------------------------------------------------------------------
+
+const LIMITE_MAXIMO_CONFIGURAVEL = 1000;
+
+/**
+ * Converte o valor digitado de um limite. Vazio = 0 (sem limite).
+ * Devolve null se for inválido (texto, negativo, decimal ou acima do máximo).
+ */
+function normalizar_limite($valor): ?int
+{
+    if ($valor === null) {
+        return 0;
+    }
+    if (!is_string($valor)) {
+        return null;
+    }
+    $valor = trim($valor);
+    if ($valor === '') {
+        return 0;
+    }
+    if (!preg_match('/^[0-9]{1,4}$/', $valor)) {
+        return null;
+    }
+    $n = (int) $valor;
+    return $n <= LIMITE_MAXIMO_CONFIGURAVEL ? $n : null;
+}
+
+/**
+ * Registra um participante na sala, respeitando max_participantes.
+ * A linha da sala fica travada (FOR UPDATE) durante a contagem + inserção:
+ * entradas simultâneas são tratadas uma de cada vez e o limite nunca é
+ * ultrapassado.
+ *
+ * Retorna ['status' => 'ok', 'id' => int]
+ *      ou ['status' => 'cheia', 'limite' => int]
+ *      ou ['status' => 'inexistente'] (a sala foi encerrada no meio do caminho).
+ */
+function entrar_na_sala(mysqli $mysqli, int $id_sala, string $nome): array
+{
+    $mysqli->begin_transaction();
+    try {
+        $sala = db_fetch_one(
+            $mysqli,
+            "SELECT max_participantes FROM sala WHERE id_sala = ? FOR UPDATE",
+            "i",
+            $id_sala
+        );
+
+        if ($sala === null) {
+            $mysqli->rollback();
+            return ['status' => 'inexistente'];
+        }
+
+        $limite = (int) $sala['max_participantes'];
+        if ($limite > 0) {
+            $linha = db_fetch_one(
+                $mysqli,
+                "SELECT COUNT(*) AS n FROM participante WHERE fk_sala_atual = ?",
+                "i",
+                $id_sala
+            );
+            if ((int) $linha['n'] >= $limite) {
+                $mysqli->rollback();
+                return ['status' => 'cheia', 'limite' => $limite];
+            }
+        }
+
+        db_exec(
+            $mysqli,
+            "INSERT INTO participante (nome_participante, fk_sala_atual, ultima_atividade) VALUES (?, ?, NOW())",
+            "si",
+            $nome,
+            $id_sala
+        );
+        $id = (int) $mysqli->insert_id;
+
+        $mysqli->commit();
+        return ['status' => 'ok', 'id' => $id];
+    } catch (Throwable $e) {
+        $mysqli->rollback();
+        throw $e;
+    }
+}
+
+/**
+ * Levanta ou abaixa a mão do participante (quem está falando é tratado antes,
+ * em salvar_hora.php). Ao LEVANTAR, respeita max_fila; abaixar é sempre
+ * permitido. A hora vem do relógio do banco, com milissegundos, a mesma fonte
+ * usada para ordenar a fila. A linha da sala fica travada (FOR UPDATE), então
+ * duas mãos levantadas ao mesmo tempo não furam o limite.
+ *
+ * Retorna 'hora' (mão levantada), 'null' (mão abaixada), 'fila_cheia' ou
+ * 'inexistente'.
+ */
+function alternar_mao(mysqli $mysqli, int $id_sala, int $id_participante): string
+{
+    $mysqli->begin_transaction();
+    try {
+        $sala = db_fetch_one(
+            $mysqli,
+            "SELECT max_fila FROM sala WHERE id_sala = ? FOR UPDATE",
+            "i",
+            $id_sala
+        );
+        $participante = db_fetch_one(
+            $mysqli,
+            "SELECT data_hora_solicitacao FROM participante WHERE id_participante = ? AND fk_sala_atual = ?",
+            "ii",
+            $id_participante,
+            $id_sala
+        );
+
+        if ($sala === null || $participante === null) {
+            $mysqli->rollback();
+            return 'inexistente';
+        }
+
+        if ($participante['data_hora_solicitacao'] === null) {
+            $limite = (int) $sala['max_fila'];
+            if ($limite > 0) {
+                $linha = db_fetch_one(
+                    $mysqli,
+                    "SELECT COUNT(*) AS n FROM participante
+                      WHERE fk_sala_atual = ? AND data_hora_solicitacao IS NOT NULL",
+                    "i",
+                    $id_sala
+                );
+                if ((int) $linha['n'] >= $limite) {
+                    $mysqli->rollback();
+                    return 'fila_cheia';
+                }
+            }
+
+            db_exec(
+                $mysqli,
+                "UPDATE participante SET data_hora_solicitacao = NOW(3), ultima_atividade = NOW()
+                  WHERE id_participante = ?",
+                "i",
+                $id_participante
+            );
+            $resultado = 'hora';
+        } else {
+            db_exec(
+                $mysqli,
+                "UPDATE participante SET data_hora_solicitacao = NULL, ultima_atividade = NOW()
+                  WHERE id_participante = ?",
+                "i",
+                $id_participante
+            );
+            $resultado = 'null';
+        }
+
+        $mysqli->commit();
+        return $resultado;
+    } catch (Throwable $e) {
+        $mysqli->rollback();
+        throw $e;
+    }
+}
