@@ -141,6 +141,22 @@ $csrf = csrf_token();
               </div>
             </div>
 
+            <div class="mb-3">
+              <button type="button" id="btnExportarRelatorio" class="btn btn-outline-dark w-100"
+                aria-expanded="false" aria-controls="painelExportarRelatorio"><?php echo t('btn_exportar_relatorio'); ?></button>
+              <div id="painelExportarRelatorio" class="d-none mt-3">
+                <p class="form-text mb-2"><?php echo t('label_exportar_relatorio_formato'); ?></p>
+                <div class="d-grid gap-2 d-sm-flex">
+                  <a class="btn btn-dark flex-fill"
+                     href="../functions/exportar_relatorio.php?id_sala=<?php echo $id_sala; ?>&formato=html">HTML</a>
+                  <a class="btn btn-dark flex-fill"
+                     href="../functions/exportar_relatorio.php?id_sala=<?php echo $id_sala; ?>&formato=md">Markdown</a>
+                  <a class="btn btn-dark flex-fill"
+                     href="../functions/exportar_relatorio.php?id_sala=<?php echo $id_sala; ?>&formato=txt">TXT</a>
+                </div>
+              </div>
+            </div>
+
             <h6 class="fw-bold"><?php echo t('titulo_participantes_presentes'); ?></h6>
             <div id="listaPresentes" class="d-grid gap-2 overflow-auto shadow p-3 mb-2 bg-body-tertiary rounded lista-presentes"
               aria-live="polite">
@@ -155,6 +171,7 @@ $csrf = csrf_token();
   <script src="../assets/sala.js"></script>
   <script src="../assets/sala-init.js"></script>
   <script src="../assets/limites.js"></script>
+  <script src="../assets/exportar-relatorio.js"></script>
 </body>
 
 </html>

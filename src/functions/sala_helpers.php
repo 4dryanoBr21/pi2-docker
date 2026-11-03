@@ -32,6 +32,14 @@ function apagar_sala(mysqli $mysqli, int $id_sala): void
 /**
  * Remove um participante. Se ele era quem estava com a palavra, libera a vez
  * antes (a FK de sala.fk_participante_falando impediria o DELETE).
+ *
+ * Nota (relatório de reunião): como o participante é apagado, ele some do
+ * relatório junto com o tempo/pautas acumulados até aqui — e, se estava
+ * falando no momento da remoção, os segundos da fala em andamento não são
+ * contabilizados (só são somados em avancar_fala_sala(), que não roda aqui).
+ * Isso é aceitável para o caso de uso (alguém que sai/cai da reunião), mas
+ * fica registrado caso o relatório precise futuramente de um histórico que
+ * sobreviva à saída do participante.
  */
 function remover_participante(mysqli $mysqli, int $id_participante): void
 {
@@ -140,6 +148,12 @@ function limpar_participantes_inativos(mysqli $mysqli, int $id_sala, int $limite
  * A sala fica travada (SELECT ... FOR UPDATE) durante a operação, então dois
  * pedidos simultâneos nunca se atropelam.
  *
+ * Também é aqui que o relatório de reunião (relatorio.php) é alimentado:
+ * ao TIRAR a palavra de quem estava falando, o tempo decorrido desde
+ * `fala_inicio` é somado em participante.tempo_falado_segundos; ao DAR a
+ * palavra para o próximo, participante.pautas_total é incrementado (conta
+ * quantas vezes aquela pessoa foi chamada a falar).
+ *
  * Retorna ['avancou' => bool, 'proximo' => ?int].
  */
 function avancar_fala_sala(mysqli $mysqli, int $id_sala, ?int $esperado = null): array
@@ -148,7 +162,7 @@ function avancar_fala_sala(mysqli $mysqli, int $id_sala, ?int $esperado = null):
     try {
         $sala = db_fetch_one(
             $mysqli,
-            "SELECT fk_participante_falando FROM sala WHERE id_sala = ? FOR UPDATE",
+            "SELECT fk_participante_falando, fala_inicio FROM sala WHERE id_sala = ? FOR UPDATE",
             "i",
             $id_sala
         );
@@ -163,6 +177,22 @@ function avancar_fala_sala(mysqli $mysqli, int $id_sala, ?int $esperado = null):
         if ($esperado !== null && $esperado !== $atual) {
             $mysqli->rollback();
             return ['avancou' => false, 'proximo' => $atual > 0 ? $atual : null];
+        }
+
+        // Quem estava falando sai agora: soma o tempo desta fala ao total
+        // acumulado dele (direto no banco, com TIMESTAMPDIFF, pra não
+        // depender do relógio do PHP nem de condição de corrida).
+        if ($atual > 0 && !empty($sala['fala_inicio'])) {
+            db_exec(
+                $mysqli,
+                "UPDATE participante
+                    SET tempo_falado_segundos = tempo_falado_segundos
+                        + GREATEST(0, TIMESTAMPDIFF(SECOND, ?, NOW()))
+                  WHERE id_participante = ?",
+                "si",
+                $sala['fala_inicio'],
+                $atual
+            );
         }
 
         db_exec(
@@ -195,7 +225,9 @@ function avancar_fala_sala(mysqli $mysqli, int $id_sala, ?int $esperado = null):
             );
             db_exec(
                 $mysqli,
-                "UPDATE participante SET data_hora_solicitacao = NULL WHERE id_participante = ?",
+                "UPDATE participante
+                    SET data_hora_solicitacao = NULL, pautas_total = pautas_total + 1
+                  WHERE id_participante = ?",
                 "i",
                 $id_proximo
             );

@@ -20,6 +20,27 @@
             });
         }
 
+        // "Olhinho" de mostrar/ocultar senha (login.php e register.php).
+        // Funciona pra qualquer input de senha: basta um botão com a classe
+        // .btn-toggle-senha, data-target apontando pro id do campo, e
+        // data-label-mostrar/data-label-ocultar com os textos já traduzidos
+        // (vêm do PHP via t(), não há necessidade de #app-config aqui).
+        document.querySelectorAll(".btn-toggle-senha").forEach((botao) => {
+            const campo = document.getElementById(botao.dataset.target);
+            if (!campo) return;
+
+            const labelMostrar = botao.dataset.labelMostrar || "Mostrar senha";
+            const labelOcultar = botao.dataset.labelOcultar || "Ocultar senha";
+
+            botao.addEventListener("click", () => {
+                const vaiMostrar = campo.type === "password";
+                campo.type = vaiMostrar ? "text" : "password";
+                botao.textContent = vaiMostrar ? "🙈" : "👁️";
+                botao.setAttribute("aria-label", vaiMostrar ? labelOcultar : labelMostrar);
+                botao.setAttribute("aria-pressed", vaiMostrar ? "true" : "false");
+            });
+        });
+
         // Lógica de Copiar Código (página criar.php)
         const btnCopiar = document.getElementById("copiarCodigo");
         if (btnCopiar) {

@@ -38,6 +38,10 @@ CREATE TABLE `participante` (
   `fk_sala_atual` int(11) DEFAULT NULL,
   `data_hora_solicitacao` datetime(3) DEFAULT NULL,
   `ultima_atividade` datetime DEFAULT NULL,
+  -- usados no relatório de reunião exportável (ver db-migrations/004)
+  `data_entrada` datetime DEFAULT CURRENT_TIMESTAMP,
+  `tempo_falado_segundos` int(11) NOT NULL DEFAULT 0,
+  `pautas_total` int(11) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id_participante`),
   KEY `fk_sala_atual` (`fk_sala_atual`),
   -- índice da consulta de fila (a tela consulta a cada 2 s); o mesmo da

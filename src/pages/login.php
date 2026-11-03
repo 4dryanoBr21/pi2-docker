@@ -156,7 +156,13 @@ $_SESSION['login_failures'] = 0;
                                 required><br>
 
                             <label for="password" class="form-label"><?php echo t('label_senha'); ?></label>
-                            <input name="senha" type="password" class="form-control" id="password" required><br>
+                            <div class="input-group">
+                                <input name="senha" type="password" class="form-control" id="password" required>
+                                <button type="button" class="btn btn-outline-dark btn-toggle-senha" data-target="password"
+                                    data-label-mostrar="<?php echo te('aria_mostrar_senha'); ?>"
+                                    data-label-ocultar="<?php echo te('aria_ocultar_senha'); ?>"
+                                    aria-label="<?php echo te('aria_mostrar_senha'); ?>" aria-pressed="false">👁️</button>
+                            </div><br>
 
                             <div class="d-grid gap-2">
                                 <button class="btn btn-dark" name="submit" type="submit"><?php echo t('btn_entrar'); ?></button>

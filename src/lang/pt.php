@@ -34,6 +34,8 @@ return [
     'label_senha' => 'Senha',
     'btn_registrar' => 'Registrar',
     'aria_sair_sem_entrar' => 'Sair sem entrar',
+    'aria_mostrar_senha' => 'Mostrar senha',
+    'aria_ocultar_senha' => 'Ocultar senha',
 
     // register.php
     'erro_preencha_campos' => 'Preencha todos os campos.',
@@ -84,6 +86,8 @@ return [
     'btn_iniciar_proximo' => 'Iniciar fala do próximo',
     'js_passar_vez' => 'Passar a vez',
     'titulo_participantes_presentes' => 'Participantes presentes',
+    'btn_exportar_relatorio' => '📄 Exportar relatório',
+    'label_exportar_relatorio_formato' => 'Baixar relatório da reunião atual em:',
     'confirm_encerrar_sala' => 'Tem certeza que deseja encerrar a sala? Isso vai apagar a sala e remover todos os participantes — não pode ser desfeito.',
     'confirm_sair_encerra_sala' => 'Sair da conta vai encerrar a sala e remover todos os participantes — não pode ser desfeito. Deseja continuar?',
     'erro_fechar_sala' => 'Erro ao fechar a sala.',

@@ -137,8 +137,14 @@ if (isset($_POST['submit'])) {
                                 value="<?php echo htmlspecialchars($email, ENT_QUOTES, 'UTF-8'); ?>" aria-describedby="emailHelp" required><br>
 
                             <label for="exampleInputPassword1" class="form-label"><?php echo t('label_password'); ?></label>
-                            <input name="senha" type="password" class="form-control" id="exampleInputPassword1"
-                                minlength="8" required aria-describedby="senhaAjuda">
+                            <div class="input-group">
+                                <input name="senha" type="password" class="form-control" id="exampleInputPassword1"
+                                    minlength="8" required aria-describedby="senhaAjuda">
+                                <button type="button" class="btn btn-outline-dark btn-toggle-senha" data-target="exampleInputPassword1"
+                                    data-label-mostrar="<?php echo te('aria_mostrar_senha'); ?>"
+                                    data-label-ocultar="<?php echo te('aria_ocultar_senha'); ?>"
+                                    aria-label="<?php echo te('aria_mostrar_senha'); ?>" aria-pressed="false">👁️</button>
+                            </div>
                             <div id="senhaAjuda" class="form-text"><?php echo t('texto_min_caracteres'); ?></div><br>
 
                             <div class="d-grid gap-2">
