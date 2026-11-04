@@ -6,8 +6,8 @@ require_once __DIR__ . '/util.php';
 // Quanto tempo SEM sinal de vida até considerar alguém "sumido".
 // Abas em segundo plano e celulares com tela bloqueada fazem o navegador
 // atrasar os timers, então os limites são folgados de propósito.
-const LIMITE_CRIADOR_INATIVO_MIN      = 3;  // criador some -> sala é apagada
-const LIMITE_PARTICIPANTE_INATIVO_MIN = 3;  // participante some -> é removido da sala
+const LIMITE_CRIADOR_INATIVO_MIN      = 1;  // criador some -> sala é apagada
+const LIMITE_PARTICIPANTE_INATIVO_MIN = 1;  // participante some -> é removido da sala
 
 /**
  * Apaga a sala e todos os participantes dela, desvinculando o criador.
