@@ -166,7 +166,7 @@ $_SESSION['login_failures'] = 0;
 
                             <div class="d-grid gap-2">
                                 <button class="btn btn-dark" name="submit" type="submit"><?php echo t('btn_entrar'); ?></button>
-                                <button id="cad" class="btn" type="button"><?php echo t('btn_registrar'); ?></button>
+                                <button id="cad" class="btn btn-outline-dark" type="button"><?php echo t('btn_registrar'); ?></button>
                             </div>
                         </form>
                     </div>
